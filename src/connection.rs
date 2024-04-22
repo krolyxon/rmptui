@@ -13,8 +13,8 @@ impl Connection {
         let songs_filenames: Vec<String> = conn
             .listall()
             .unwrap()
-            .iter()
-            .map(|x| x.clone().file)
+            .into_iter()
+            .map(|x| x.file)
             .collect();
 
         Ok(Self {
@@ -70,7 +70,7 @@ impl Connection {
         let current_song = self.conn.currentsong();
         let status = self.conn.status().unwrap();
 
-        if current_song.is_ok() {
+        if current_song.is_ok() && status.state != State::Stop {
             let song = current_song.unwrap();
             if let Some(s) = song {
                 println!("{} - {}", s.artist.unwrap(), s.title.unwrap());
@@ -82,7 +82,7 @@ impl Connection {
         );
     }
 
-    // Play controls
+    // Playback controls
     pub fn pause(&mut self) {
         self.conn.pause(true).unwrap();
     }
@@ -92,14 +92,15 @@ impl Connection {
     }
 
     // Volume controls
-    pub fn inc_volume(&mut self, inc: i8) {
+    pub fn set_volume(&mut self, u: String) {
         let cur = self.conn.status().unwrap().volume;
-        self.conn.volume(cur + inc).unwrap();
-    }
-
-    pub fn dec_volume(&mut self, dec: i8) {
-        let cur = self.conn.status().unwrap().volume;
-        self.conn.volume(cur - dec).unwrap();
+        let sym = u.get(0..1).unwrap();
+        let u: i8 = u.parse::<i8>().unwrap();
+        if sym == "+" || sym == "-" {
+            self.conn.volume(cur + u).unwrap();
+        } else {
+            self.conn.volume(u).unwrap();
+        }
     }
 }
 
