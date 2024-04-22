@@ -1,7 +1,6 @@
 use mpd::song::Song;
-use mpd::Client;
+use mpd::{Client, State};
 use simple_dmenu::dmenu;
-use std::process::Command;
 
 pub struct Connection {
     pub conn: Client,
@@ -37,12 +36,14 @@ impl Connection {
     }
 
     fn push(&mut self, song: &Song) {
-        self.conn.push(song).unwrap();
         if self.conn.queue().unwrap().is_empty() {
             self.conn.push(song).unwrap();
             self.conn.play().unwrap();
         } else {
             self.conn.push(song).unwrap();
+            if self.conn.status().unwrap().state == State::Stop {
+                self.conn.play().unwrap();
+            }
             self.conn.next().unwrap();
         }
     }
