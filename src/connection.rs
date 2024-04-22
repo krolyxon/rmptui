@@ -10,8 +10,12 @@ pub struct Connection {
 impl Connection {
     pub fn new(addrs: &str) -> Result<Self, mpd::error::Error> {
         let mut conn = Client::connect(addrs)?;
-        let mut songs_filenames: Vec<String> = Vec::new();
-        get_file_tree_into_vec(&mut conn, &mut songs_filenames, ".", ".");
+        let songs_filenames: Vec<String> = conn
+            .listall()
+            .unwrap()
+            .iter()
+            .map(|x| x.clone().file)
+            .collect();
 
         Ok(Self {
             conn,
@@ -96,27 +100,6 @@ impl Connection {
     pub fn dec_volume(&mut self, dec: i8) {
         let cur = self.conn.status().unwrap().volume;
         self.conn.volume(cur - dec).unwrap();
-    }
-}
-
-fn get_file_tree_into_vec(conn: &mut Client, vec: &mut Vec<String>, path: &str, dir_append: &str) {
-    let songs = conn.listfiles(path).unwrap_or_default();
-    for (i, s) in songs {
-        // Output of listfiles contains the last-modified thing, we dont want that
-        if i != "Last-Modified" {
-            if i == "directory" {
-                get_file_tree_into_vec(conn, vec, &s, &s);
-            } else {
-                // We parse the string as float because the output of listfiles contains some random numbers, we dont want that
-                if !s.parse::<f32>().is_ok() {
-                    let mut sam: String = String::new();
-                    sam.push_str(dir_append);
-                    sam.push_str(r"/");
-                    sam.push_str(s.as_str());
-                    vec.push(sam);
-                }
-            }
-        }
     }
 }
 
