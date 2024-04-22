@@ -142,6 +142,7 @@ dependencies = [
  "clap",
  "mpd",
  "rust_fzf",
+ "simple-dmenu",
 ]
 
 [[package]]
@@ -149,6 +150,12 @@ name = "rust_fzf"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76a94b9c6a9880356cc6de038a52397509f8ac86a18c30d76da904b08fec2cb1"
+
+[[package]]
+name = "simple-dmenu"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f392360283341235b298e79f0360bd924db6e6ad1e0964cbf4c43ea79c237eb"
 
 [[package]]
 name = "strsim"
