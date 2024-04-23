@@ -1,5 +1,6 @@
-use crate::connection::Connection;
+use crate::connection::{self, Connection};
 use crate::list::ContentList;
+use mpd::Client;
 use std::collections::VecDeque;
 
 // Application result type
@@ -12,20 +13,30 @@ pub struct App {
     pub running: bool,
     pub conn: Connection,
     pub play_deque: VecDeque<String>,
-    pub list: ContentList,
+    pub song_list: ContentList<String>,
+    pub queue_list: ContentList<String>,
+    pub pl_list: ContentList<String>,
 }
 
 impl App {
-    pub fn new(addrs: &str) -> Self {
+    pub fn builder(addrs: &str) -> AppResult<Self> {
         let mut conn = Connection::new(addrs).unwrap();
         let mut vec: VecDeque<String> = VecDeque::new();
+        let mut pl_list = ContentList::new();
+        pl_list.list = Self::get_playlist(&mut conn.conn)?;
         Self::get_queue(&mut conn, &mut vec);
-        Self {
+
+        let mut song_list = ContentList::new();
+        song_list.list = conn.songs_filenames.clone();
+
+        Ok(Self {
             running: true,
             conn,
             play_deque: vec,
-            list: ContentList::new(),
-        }
+            song_list,
+            queue_list: ContentList::new(),
+            pl_list,
+        })
     }
 
     pub fn tick(&self) {}
@@ -52,10 +63,15 @@ impl App {
         self.play_deque.clear();
         Self::get_queue(&mut self.conn, &mut self.play_deque);
     }
-}
 
-fn to_vecdeque(filenames: &Vec<String>) -> VecDeque<String> {
-    let mut v: VecDeque<String> = VecDeque::new();
-    v = filenames.iter().map(|x| x.to_string()).collect();
-    v
+    pub fn get_playlist(conn: &mut Client) -> AppResult<Vec<String>> {
+        let list: Vec<String> = conn.playlists()?.iter().map(|p| p.clone().name).collect();
+
+        Ok(list)
+    }
+
+    pub fn update_playlist(&mut self) -> AppResult<()> {
+        Self::get_playlist(&mut self.conn.conn)?;
+        Ok(())
+    }
 }

@@ -10,6 +10,7 @@ pub type Error = Box<dyn std::error::Error>;
 pub struct Connection {
     pub conn: Client,
     pub songs_filenames: Vec<String>,
+    // pub state: String,
 }
 
 impl Connection {
@@ -25,6 +26,7 @@ impl Connection {
         Ok(Self {
             conn,
             songs_filenames,
+            // state: "Stopped".to_string(),
         })
     }
 
@@ -50,18 +52,39 @@ impl Connection {
         Ok(())
     }
 
+    // pub fn update_state(&mut self) {
+    //     match self.conn.status().unwrap().state {
+    //         State::Stop => self.state = "Stopped".to_string(),
+    //         State::Play => self.state = "Playing".to_string(),
+    //         State::Pause => self.state = "Paused".to_string(),
+    //     }
+    // }
+
     pub fn push(&mut self, song: &Song) -> Result<()> {
         if self.conn.queue().unwrap().is_empty() {
             self.conn.push(song).unwrap();
             self.conn.play().unwrap();
         } else {
-            self.conn.push(song).unwrap();
-            if self.conn.status().unwrap().state == State::Stop {
-                self.conn.play().unwrap();
+            self.conn.push(song)?;
+            if self.conn.status()?.state == State::Stop {
+                self.conn.play()?;
             }
             self.conn.next().unwrap();
         }
 
+        Ok(())
+    }
+
+    pub fn push_playlist(&mut self, playlist: &str) -> Result<()> {
+        let songs: Vec<Song> = self.conn.playlist(playlist)?;
+
+        for song in songs {
+            if self.songs_filenames.contains(&song.file) {
+                let song = self.get_song_with_only_filename(&song.file);
+                self.conn.push(&song)?;
+                self.conn.play()?;
+            }
+        }
         Ok(())
     }
 
@@ -81,7 +104,6 @@ impl Connection {
 
     pub fn get_current_song(&mut self) -> Option<String> {
         self.conn.currentsong().unwrap().unwrap_or_default().title
-
     }
     pub fn status(&mut self) {
         let current_song = self.conn.currentsong();
@@ -97,6 +119,19 @@ impl Connection {
             "volume: {}\trepeat: {}\trandom: {}\tsingle: {}\tconsume: {}",
             status.volume, status.repeat, status.random, status.single, status.consume
         );
+    }
+
+    pub fn now_playing(&mut self) -> Option<String> {
+        let song = self.conn.currentsong().unwrap().unwrap_or_default();
+        if let Some(s) = song.title {
+            if let Some(a) = song.artist {
+                Some(format!("{} - {}", s, a))
+            } else {
+                Some(s)
+            }
+        } else {
+            None
+        }
     }
 
     // Playback controls

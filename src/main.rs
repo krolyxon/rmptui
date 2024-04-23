@@ -42,7 +42,7 @@ fn main() -> AppResult<()> {
 
  let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend)?;
-    let mut app = App::new("127.0.0.1:6600");
+    let mut app = App::builder("127.0.0.1:6600")?;
     let events = EventHandler::new(250);
 
     let mut tui = tui::Tui::new(terminal, events);

@@ -1,11 +1,13 @@
 #[derive(Debug)]
-pub struct ContentList {
+pub struct ContentList<T> {
+    pub list: Vec<T>,
     pub index: usize
 }
 
-impl ContentList {
+impl<T> ContentList<T> {
     pub fn new() -> Self {
         ContentList {
+            list: Vec::new(),
             index: 0
         }
     }
