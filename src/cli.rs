@@ -1,28 +1,12 @@
 use clap::{Parser, Subcommand};
+
 #[derive(Parser, Debug)]
-#[command(version, about)]
-#[clap(author = "krolyxon")]
+#[clap(version, about, author = "krolyxon")]
 /// MPD client made with Rust
 pub struct Args {
-    /// pause
-    #[clap(short, long, default_value = "false")]
-    pub pause: bool,
-
-    /// toggle pause
-    #[arg(short, long, default_value = "false")]
-    pub toggle_pause: bool,
-
-    /// show current status
-    #[arg(short, long, default_value = "false")]
-    pub show_status: bool,
-
-    /// use fzf selector for selecting songs
-    #[arg(short, long, default_value = "false")]
-    pub fzf_select: bool,
-
-    /// use dmenu selector for selecting songss
-    #[arg(short, long, default_value = "false")]
-    pub dmenu_select: bool,
+    /// No TUI
+    #[arg(short= 'n', default_value="false")]
+    pub no_tui: bool,
 
     #[command(subcommand)]
     pub command: Command,
@@ -30,14 +14,30 @@ pub struct Args {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    #[command(arg_required_else_help = true)]
+    #[command(arg_required_else_help = true, long_flag = "volume" , short_flag = 'v')]
+    /// Set Volume
     Volume {
         vol: String,
     },
 
+    /// Use dmenu for selection
+    #[command(long_flag = "dmenu" , short_flag = 'd')]
     Dmenu,
+
+    /// Use Fzf for selection
+    #[command(long_flag = "fzf" , short_flag = 'f')]
     Fzf,
+
+    /// Check Status
+    #[command(long_flag = "status" , short_flag = 's')]
     Status,
+
+    /// Pause playback
+    #[command(long_flag = "pause" , short_flag = 'p')]
     Pause,
+
+    /// Toggle Playback
+    #[command(long_flag = "toggle" , short_flag = 't')]
     Toggle,
+
 }

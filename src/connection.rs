@@ -1,15 +1,20 @@
 use mpd::song::Song;
 use mpd::{Client, State};
 use simple_dmenu::dmenu;
+use std::process::Command;
 
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>;
+
+#[derive(Debug)]
 pub struct Connection {
     pub conn: Client,
     pub songs_filenames: Vec<String>,
 }
 
 impl Connection {
-    pub fn new(addrs: &str) -> Result<Self, mpd::error::Error> {
-        let mut conn = Client::connect(addrs)?;
+    pub fn new(addrs: &str) -> Result<Self> {
+        let mut conn = Client::connect(addrs).unwrap();
         let songs_filenames: Vec<String> = conn
             .listall()
             .unwrap()
@@ -23,23 +28,29 @@ impl Connection {
         })
     }
 
-    pub fn play_fzf(&mut self) {
+    pub fn play_fzf(&mut self) -> Result<()> {
+        is_installed("fzf").map_err(|ex| ex)?;
+
         let ss = &self.songs_filenames;
         let fzf_choice = rust_fzf::select(ss.clone(), Vec::new()).unwrap();
         let index = get_choice_index(&self.songs_filenames, fzf_choice.get(0).unwrap());
         let song = self.get_song_with_only_filename(ss.get(index).unwrap());
-        self.push(&song);
+        self.push(&song)?;
+
+        Ok(())
     }
 
-    pub fn play_dmenu(&mut self) {
+    pub fn play_dmenu(&mut self) -> Result<()> {
+        is_installed("dmenu").map_err(|ex| ex)?;
         let ss: Vec<&str> = self.songs_filenames.iter().map(|x| x.as_str()).collect();
         let op = dmenu!(iter &ss; args "-l", "30");
         let index = get_choice_index(&self.songs_filenames, &op);
         let song = self.get_song_with_only_filename(ss.get(index).unwrap());
-        self.push(&song);
+        self.push(&song)?;
+        Ok(())
     }
 
-    fn push(&mut self, song: &Song) {
+    pub fn push(&mut self, song: &Song) -> Result<()> {
         if self.conn.queue().unwrap().is_empty() {
             self.conn.push(song).unwrap();
             self.conn.play().unwrap();
@@ -50,9 +61,11 @@ impl Connection {
             }
             self.conn.next().unwrap();
         }
+
+        Ok(())
     }
 
-    fn get_song_with_only_filename(&self, filename: &str) -> Song {
+    pub fn get_song_with_only_filename(&self, filename: &str) -> Song {
         Song {
             file: filename.to_string(),
             artist: None,
@@ -66,6 +79,10 @@ impl Connection {
         }
     }
 
+    pub fn get_current_song(&mut self) -> Option<String> {
+        self.conn.currentsong().unwrap().unwrap_or_default().title
+
+    }
     pub fn status(&mut self) {
         let current_song = self.conn.currentsong();
         let status = self.conn.status().unwrap();
@@ -111,4 +128,17 @@ fn get_choice_index(ss: &Vec<String>, selection: &str) -> usize {
     }
 
     choice
+}
+
+fn is_installed(ss: &str) -> Result<()> {
+    let output = Command::new("which")
+        .arg(ss)
+        .output()
+        .expect("Failed to execute command");
+    if output.status.success() {
+        Ok(())
+    } else {
+        let err = format!("{} not installed", ss);
+        Err(err.into())
+    }
 }
