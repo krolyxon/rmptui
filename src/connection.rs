@@ -14,6 +14,7 @@ pub struct Connection {
 }
 
 impl Connection {
+    /// Create a new connection
     pub fn new(addrs: &str) -> Result<Self> {
         let mut conn = Client::connect(addrs).unwrap();
         let songs_filenames: Vec<String> = conn
@@ -30,6 +31,7 @@ impl Connection {
         })
     }
 
+    /// Fzf prompt for selecting song
     pub fn play_fzf(&mut self) -> Result<()> {
         is_installed("fzf").map_err(|ex| ex)?;
 
@@ -42,6 +44,7 @@ impl Connection {
         Ok(())
     }
 
+    /// Dmenu prompt for selecting songs
     pub fn play_dmenu(&mut self) -> Result<()> {
         is_installed("dmenu").map_err(|ex| ex)?;
         let ss: Vec<&str> = self.songs_filenames.iter().map(|x| x.as_str()).collect();
@@ -60,6 +63,7 @@ impl Connection {
     //     }
     // }
 
+    /// push the given song to queue
     pub fn push(&mut self, song: &Song) -> Result<()> {
         if self.conn.queue().unwrap().is_empty() {
             self.conn.push(song).unwrap();
@@ -75,6 +79,7 @@ impl Connection {
         Ok(())
     }
 
+    /// Push all songs of a playlist into queue
     pub fn push_playlist(&mut self, playlist: &str) -> Result<()> {
         let songs: Vec<Song> = self.conn.playlist(playlist)?;
 
@@ -88,6 +93,7 @@ impl Connection {
         Ok(())
     }
 
+    /// Given a filename, get instance of Song with only filename
     pub fn get_song_with_only_filename(&self, filename: &str) -> Song {
         Song {
             file: filename.to_string(),
@@ -102,9 +108,12 @@ impl Connection {
         }
     }
 
+    /// get current playing song
     pub fn get_current_song(&mut self) -> Option<String> {
         self.conn.currentsong().unwrap().unwrap_or_default().title
     }
+
+    /// Print status to stdout
     pub fn status(&mut self) {
         let current_song = self.conn.currentsong();
         let status = self.conn.status().unwrap();
@@ -121,29 +130,33 @@ impl Connection {
         );
     }
 
-    pub fn now_playing(&mut self) -> Option<String> {
-        let song = self.conn.currentsong().unwrap().unwrap_or_default();
+    /// Gives title of current playing song
+    pub fn now_playing(&mut self) -> Result<Option<String>> {
+        let song = self.conn.currentsong()?.unwrap();
         if let Some(s) = song.title {
             if let Some(a) = song.artist {
-                Some(format!("{} - {}", s, a))
+                return Ok(Some(format!("{} - {}", s, a)));
             } else {
-                Some(s)
+                return Ok(Some(s));
             }
         } else {
-            None
+            return Ok(Some(song.file));
         }
     }
 
     // Playback controls
+    /// Pause playback
     pub fn pause(&mut self) {
         self.conn.pause(true).unwrap();
     }
 
+    /// Toggles playback
     pub fn toggle_pause(&mut self) {
         self.conn.toggle_pause().unwrap();
     }
 
     // Volume controls
+    /// Sets the volume
     pub fn set_volume(&mut self, u: String) {
         let cur = self.conn.status().unwrap().volume;
         let sym = u.get(0..1).unwrap();
@@ -156,6 +169,7 @@ impl Connection {
     }
 }
 
+/// Gets the index of the string from the Vector
 fn get_choice_index(ss: &Vec<String>, selection: &str) -> usize {
     let mut choice: usize = 0;
     if let Some(index) = ss.iter().position(|s| s == selection) {
@@ -165,6 +179,7 @@ fn get_choice_index(ss: &Vec<String>, selection: &str) -> usize {
     choice
 }
 
+/// Checks if given program is installed in your system
 fn is_installed(ss: &str) -> Result<()> {
     let output = Command::new("which")
         .arg(ss)

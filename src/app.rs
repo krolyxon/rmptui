@@ -1,4 +1,4 @@
-use crate::connection::{self, Connection};
+use crate::connection::Connection;
 use crate::list::ContentList;
 use mpd::Client;
 use std::collections::VecDeque;
