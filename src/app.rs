@@ -12,7 +12,6 @@ pub struct App {
     /// check if app is running
     pub running: bool,
     pub conn: Connection,
-    pub play_deque: ContentList<String>,
     pub song_list: ContentList<String>,
     pub queue_list: ContentList<String>,
     pub pl_list: ContentList<String>,
@@ -21,11 +20,11 @@ pub struct App {
 impl App {
     pub fn builder(addrs: &str) -> AppResult<Self> {
         let mut conn = Connection::new(addrs).unwrap();
-        let mut queue = ContentList::new();
+        let mut queue_list = ContentList::new();
         let mut pl_list = ContentList::new();
         pl_list.list = Self::get_playlist(&mut conn.conn)?;
 
-        Self::get_queue(&mut conn, &mut queue.list);
+        Self::get_queue(&mut conn, &mut queue_list.list);
 
         let mut song_list = ContentList::new();
         song_list.list = conn.songs_filenames.clone();
@@ -33,9 +32,8 @@ impl App {
         Ok(Self {
             running: true,
             conn,
-            play_deque: ContentList::new(),
             song_list,
-            queue_list: ContentList::new(),
+            queue_list,
             pl_list,
         })
     }

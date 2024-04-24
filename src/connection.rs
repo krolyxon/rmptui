@@ -70,10 +70,11 @@ impl Connection {
             self.conn.play().unwrap();
         } else {
             self.conn.push(song)?;
+            let len: u32 = (self.conn.queue().unwrap().len() - 1).try_into().unwrap();
+            self.conn.switch(len)?;
             if self.conn.status()?.state == State::Stop {
                 self.conn.play()?;
             }
-            self.conn.next().unwrap();
         }
 
         Ok(())

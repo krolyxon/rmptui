@@ -27,7 +27,9 @@ impl<T> ContentList<T> {
 
     /// Go to previous item in list
     pub fn prev(&mut self) {
-        if self.index != 0 {
+        if self.index == 0 {
+            self.index = self.list.len() - 1;
+        } else  {
             self.index -= 1;
         }
     }
