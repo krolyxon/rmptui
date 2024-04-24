@@ -48,7 +48,7 @@ impl Connection {
     pub fn play_dmenu(&mut self) -> Result<()> {
         is_installed("dmenu").map_err(|ex| ex)?;
         let ss: Vec<&str> = self.songs_filenames.iter().map(|x| x.as_str()).collect();
-        let op = dmenu!(iter &ss; args "-l", "30");
+        let op = dmenu!(iter &ss; args "-p", "Choose a song: ", "-l", "30");
         let index = get_choice_index(&self.songs_filenames, &op);
         let song = self.get_song_with_only_filename(ss.get(index).unwrap());
         self.push(&song)?;

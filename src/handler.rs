@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use crate::app::{App, AppResult, SelectedTab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::style::Modifier;
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     match key_event.code {
@@ -35,7 +34,13 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     );
                     app.conn.push(&song)?;
                 }
-                SelectedTab::Queue => {}
+                SelectedTab::Queue => {
+                    let song = app.conn.get_song_with_only_filename(
+                        app.queue_list.list.get(app.queue_list.index).unwrap(),
+                    );
+                    app.conn.push(&song)?;
+
+                }
                 SelectedTab::Playlists => {
                     app.conn
                         .push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
@@ -63,9 +68,20 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             // app.update_queue();
         }
 
-        KeyCode::Char('d') => {
+        // Dmenu prompt
+        KeyCode::Char('D') => {
             app.conn.play_dmenu()?;
         }
+
+
+        // add to queue
+        KeyCode::Char('a') => {
+            let song = app.conn.get_song_with_only_filename(
+                app.conn.songs_filenames.get(app.song_list.index).unwrap(),
+            );
+            app.conn.conn.push(&song)?;
+        }
+
 
         KeyCode::Right => {
             app.conn
@@ -102,13 +118,12 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             app.selected_tab = SelectedTab::Playlists;
         }
 
-
         KeyCode::Char('n') => {
-                app.conn.conn.next()?;
+            app.conn.conn.next()?;
         }
 
         KeyCode::Char('N') => {
-                app.conn.conn.prev()?;
+            app.conn.conn.prev()?;
         }
 
         // Volume controls
@@ -120,7 +135,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             app.conn.dec_volume(2);
         }
 
-
+        // Delete highlighted song from the queue
+        KeyCode::Char('d') => {
+            app.conn.conn.delete(app.queue_list.index as u32)?;
+        }
 
         _ => {}
     }

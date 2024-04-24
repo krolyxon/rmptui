@@ -17,7 +17,6 @@ pub struct App {
     pub selected_tab: SelectedTab,
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum SelectedTab {
     SongList,
@@ -64,17 +63,21 @@ impl App {
     }
 
     pub fn get_queue(conn: &mut Connection, vec: &mut Vec<String>) {
+        // conn.conn.queue().unwrap().into_iter().for_each(|x| {
+        //     if let Some(title) = x.title {
+        //         if let Some(artist) = x.artist {
+        //             vec.push(format!("{} - {}", artist, title));
+        //         } else {
+        //             vec.push(title)
+        //         }
+        //     } else {
+        //         vec.push(x.file)
+        //     }
+        // });
         conn.conn.queue().unwrap().into_iter().for_each(|x| {
-            if let Some(title) = x.title {
-                if let Some(artist) = x.artist {
-                    vec.push(format!("{} - {}", artist, title));
-                } else {
-                    vec.push(title)
-                }
-            } else {
-                vec.push(x.file)
-            }
-        });
+            vec.push(x.file);
+        }
+        );
     }
 
     pub fn update_queue(&mut self) {
@@ -97,7 +100,7 @@ impl App {
         self.selected_tab = match self.selected_tab {
             SelectedTab::SongList => SelectedTab::Queue,
             SelectedTab::Queue => SelectedTab::Playlists,
-            SelectedTab::Playlists=> SelectedTab::SongList,
+            SelectedTab::Playlists => SelectedTab::SongList,
         };
     }
 }
