@@ -158,15 +158,17 @@ impl Connection {
     }
 
     // Volume controls
-    /// Sets the volume
-    pub fn set_volume(&mut self, u: String) {
+    pub fn inc_volume(&mut self, v: i8) {
         let cur = self.conn.status().unwrap().volume;
-        let sym = u.get(0..1).unwrap();
-        let u: i8 = u.parse::<i8>().unwrap();
-        if sym == "+" || sym == "-" {
-            self.conn.volume(cur + u).unwrap();
-        } else {
-            self.conn.volume(u).unwrap();
+        if cur + v <= 100 {
+            self.conn.volume(cur + v).unwrap();
+        }
+    }
+
+    pub fn dec_volume(&mut self, v: i8) {
+        let cur = self.conn.status().unwrap().volume;
+        if cur - v >= 0 {
+            self.conn.volume(cur - v).unwrap();
         }
     }
 }

@@ -1,7 +1,8 @@
 use std::time::Duration;
 
-use crate::app::{App, AppResult};
+use crate::app::{App, AppResult, SelectedTab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::style::Modifier;
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     match key_event.code {
@@ -12,57 +13,58 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
         }
 
-        KeyCode::Char('j') => {
-            app.song_list.next();
-        }
+        KeyCode::Char('j') | KeyCode::Down => match app.selected_tab {
+            SelectedTab::SongList => app.song_list.next(),
+            SelectedTab::Queue => app.queue_list.next(),
+            SelectedTab::Playlists => app.pl_list.next(),
+        },
 
-        KeyCode::Char('k') => {
-            app.song_list.prev();
-        }
+        KeyCode::Char('k') | KeyCode::Up => match app.selected_tab {
+            SelectedTab::SongList => app.song_list.prev(),
+            SelectedTab::Queue => app.queue_list.prev(),
+            SelectedTab::Playlists => app.pl_list.prev(),
+        },
 
         KeyCode::Enter | KeyCode::Char('l') => {
-            let song = app.conn.get_song_with_only_filename(
-                app.conn.songs_filenames.get(app.song_list.index).unwrap(),
-            );
-            app.conn.push(&song)?;
             // app.update_queue();
+
+            match app.selected_tab {
+                SelectedTab::SongList => {
+                    let song = app.conn.get_song_with_only_filename(
+                        app.conn.songs_filenames.get(app.song_list.index).unwrap(),
+                    );
+                    app.conn.push(&song)?;
+                }
+                SelectedTab::Queue => {}
+                SelectedTab::Playlists => {
+                    app.conn
+                        .push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
+                }
+            }
         }
 
         // Playback controls
         // Toggle Pause
         KeyCode::Char('p') => {
             app.conn.toggle_pause();
+            app.conn.update_state();
         }
 
         // Pause
         KeyCode::Char('s') => {
             app.conn.pause();
+            app.conn.update_state();
         }
 
-        // Clearn Queue
+        // Clear Queue
         KeyCode::Char('x') => {
             app.conn.conn.clear()?;
+            app.conn.update_state();
             // app.update_queue();
         }
 
         KeyCode::Char('d') => {
             app.conn.play_dmenu()?;
-        }
-
-        KeyCode::Down => {
-            if key_event.modifiers == KeyModifiers::SHIFT {
-                app.queue_list.next();
-            } else {
-                app.pl_list.next();
-            }
-        }
-
-        KeyCode::Up => {
-            if key_event.modifiers == KeyModifiers::SHIFT {
-                app.queue_list.prev();
-            } else {
-                app.pl_list.prev();
-            }
         }
 
         KeyCode::Right => {
@@ -83,6 +85,43 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             let pos = Duration::from_secs(pos.as_secs().wrapping_add(2));
             app.conn.conn.seek(place, pos)?;
         }
+
+        KeyCode::Tab => {
+            app.cycle_tabls();
+        }
+
+        KeyCode::Char('1') => {
+            app.selected_tab = SelectedTab::SongList;
+        }
+
+        KeyCode::Char('2') => {
+            app.selected_tab = SelectedTab::Queue;
+        }
+
+        KeyCode::Char('3') => {
+            app.selected_tab = SelectedTab::Playlists;
+        }
+
+
+        KeyCode::Char('n') => {
+                app.conn.conn.next()?;
+        }
+
+        KeyCode::Char('N') => {
+                app.conn.conn.prev()?;
+        }
+
+        // Volume controls
+        KeyCode::Char('=') => {
+            app.conn.inc_volume(2);
+        }
+
+        KeyCode::Char('-') => {
+            app.conn.dec_volume(2);
+        }
+
+
+
         _ => {}
     }
 

@@ -1,7 +1,6 @@
 use crate::connection::Connection;
 use crate::list::ContentList;
 use mpd::Client;
-use std::collections::VecDeque;
 
 // Application result type
 pub type AppResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -15,6 +14,25 @@ pub struct App {
     pub song_list: ContentList<String>,
     pub queue_list: ContentList<String>,
     pub pl_list: ContentList<String>,
+    pub selected_tab: SelectedTab,
+}
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum SelectedTab {
+    SongList,
+    Queue,
+    Playlists,
+}
+
+impl SelectedTab {
+    fn as_usize(&self) {
+        match self {
+            SelectedTab::SongList => 0,
+            SelectedTab::Queue => 1,
+            SelectedTab::Playlists => 2,
+        };
+    }
 }
 
 impl App {
@@ -35,6 +53,7 @@ impl App {
             song_list,
             queue_list,
             pl_list,
+            selected_tab: SelectedTab::SongList,
         })
     }
 
@@ -72,5 +91,13 @@ impl App {
     pub fn update_playlist(&mut self) -> AppResult<()> {
         Self::get_playlist(&mut self.conn.conn)?;
         Ok(())
+    }
+
+    pub fn cycle_tabls(&mut self) {
+        self.selected_tab = match self.selected_tab {
+            SelectedTab::SongList => SelectedTab::Queue,
+            SelectedTab::Queue => SelectedTab::Playlists,
+            SelectedTab::Playlists=> SelectedTab::SongList,
+        };
     }
 }

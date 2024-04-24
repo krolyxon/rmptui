@@ -1,6 +1,7 @@
-use crate::app::{App, AppResult};
+use crate::app::{App, AppResult, SelectedTab};
 use ratatui::{
     prelude::*,
+    style::palette::tailwind,
     widgets::{block::Title, *},
 };
 
@@ -12,25 +13,45 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     // - https://github.com/ratatui-org/ratatui/tree/master/examples
 
     // Layout
-    let main_layout = Layout::default()
+    let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Percentage(93), Constraint::Percentage(7)])
+        .constraints(vec![
+            Constraint::Percentage(5),
+            Constraint::Percentage(88),
+            Constraint::Percentage(7),
+        ])
         .split(frame.size());
+    //
+    // let outer_layout = Layout::default()
+    //     .direction(Direction::Horizontal)
+    //     .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+    //     .split(main_layout[1]);
+    //
+    // let inner_layout = Layout::default()
+    //     .direction(Direction::Vertical)
+    //     .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+    // .split(outer_layout[1]);
 
-    let outer_layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(main_layout[0]);
+    // draw_song_list(frame, app, outer_layout[0]);
+    // draw_queue(frame, app, inner_layout[0]);
+    // draw_playlists(frame, app, inner_layout[1]);
+    draw_progress_bar(frame, app, layout[2]);
 
-    let inner_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(outer_layout[1]);
+    let highlight_style = (Color::default(), tailwind::YELLOW.c700);
+    let tab = Tabs::new(vec!["Songs List", "Play Queue", "Playlists"])
+        .block(Block::default().title("Tabs").borders(Borders::ALL))
+        .style(Style::default().white())
+        .highlight_style(highlight_style)
+        .divider(" ")
+        .select(app.selected_tab.clone() as usize)
+        .padding("", "");
+    frame.render_widget(tab, layout[0]);
 
-    draw_song_list(frame, app, outer_layout[0]);
-    draw_queue(frame, app, inner_layout[0]);
-    draw_playlists(frame, app, inner_layout[1]);
-    draw_progress_bar(frame, app, main_layout[1]);
+    match app.selected_tab {
+        SelectedTab::SongList => draw_song_list(frame, app, layout[1]),
+        SelectedTab::Queue  => draw_queue(frame, app, layout[1]),
+        SelectedTab::Playlists  => draw_playlists(frame, app, layout[1]),
+    }
 }
 
 /// draws list of songs
@@ -98,6 +119,7 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
     let title = Block::default()
         .title(Title::from(format!("{}: ", state).red().bold()))
         .title(Title::from(song.green().bold()));
+        // .title(Title::from(app.conn.conn.status().unwrap_or_default().volume.to_string().yellow())).title_alignment(Alignment::Right);
     let progress_bar = LineGauge::default()
         .block(title.borders(Borders::ALL))
         .gauge_style(
