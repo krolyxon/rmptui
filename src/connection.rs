@@ -10,7 +10,7 @@ pub type Error = Box<dyn std::error::Error>;
 pub struct Connection {
     pub conn: Client,
     pub songs_filenames: Vec<String>,
-    // pub state: String,
+    pub state: String,
 }
 
 impl Connection {
@@ -27,7 +27,7 @@ impl Connection {
         Ok(Self {
             conn,
             songs_filenames,
-            // state: "Stopped".to_string(),
+            state: "Stopped".to_string(),
         })
     }
 
@@ -55,13 +55,14 @@ impl Connection {
         Ok(())
     }
 
-    // pub fn update_state(&mut self) {
-    //     match self.conn.status().unwrap().state {
-    //         State::Stop => self.state = "Stopped".to_string(),
-    //         State::Play => self.state = "Playing".to_string(),
-    //         State::Pause => self.state = "Paused".to_string(),
-    //     }
-    // }
+    pub fn update_state(&mut self) -> String {
+        match self.conn.status().unwrap().state {
+            State::Stop => self.state = "Stopped".to_string(),
+            State::Play => self.state = "Playing".to_string(),
+            State::Pause => self.state = "Paused".to_string(),
+        }
+        self.state.clone()
+    }
 
     /// push the given song to queue
     pub fn push(&mut self, song: &Song) -> Result<()> {
@@ -136,7 +137,7 @@ impl Connection {
         let song = self.conn.currentsong()?.unwrap_or_default();
         if let Some(s) = song.title {
             if let Some(a) = song.artist {
-                return Ok(Some(format!("{} - {}", s, a)));
+                return Ok(Some(format!("\"{}\" By {}", a, s)));
             } else {
                 return Ok(Some(s));
             }

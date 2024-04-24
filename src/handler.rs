@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::app::{App, AppResult};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
@@ -69,17 +71,17 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         }
 
         KeyCode::Char('f') => {
-            // let place = app.conn.conn.status().unwrap().duration;
+            let place = app.conn.conn.status().unwrap().song.unwrap().pos;
             let (pos, _) = app.conn.conn.status().unwrap().time.unwrap();
-            let pos: i64 = (pos.as_secs() + 2).try_into().unwrap();
-            app.conn.conn.seek(2, pos)?;
+            let pos = Duration::from_secs(pos.as_secs().wrapping_add(2));
+            app.conn.conn.seek(place, pos)?;
         }
 
         KeyCode::Char('b') => {
-            // let place = app.conn.conn.status().unwrap().duration;
+            let place = app.conn.conn.status().unwrap().song.unwrap().pos;
             let (pos, _) = app.conn.conn.status().unwrap().time.unwrap();
-            let pos: i64 = (pos.as_secs() - 2).try_into().unwrap();
-            app.conn.conn.seek(2, pos)?;
+            let pos = Duration::from_secs(pos.as_secs().wrapping_add(2));
+            app.conn.conn.seek(place, pos)?;
         }
         _ => {}
     }
