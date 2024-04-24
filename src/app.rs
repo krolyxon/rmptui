@@ -12,7 +12,7 @@ pub struct App {
     /// check if app is running
     pub running: bool,
     pub conn: Connection,
-    pub play_deque: VecDeque<String>,
+    pub play_deque: ContentList<String>,
     pub song_list: ContentList<String>,
     pub queue_list: ContentList<String>,
     pub pl_list: ContentList<String>,
@@ -21,10 +21,11 @@ pub struct App {
 impl App {
     pub fn builder(addrs: &str) -> AppResult<Self> {
         let mut conn = Connection::new(addrs).unwrap();
-        let mut vec: VecDeque<String> = VecDeque::new();
+        let mut queue = ContentList::new();
         let mut pl_list = ContentList::new();
         pl_list.list = Self::get_playlist(&mut conn.conn)?;
-        Self::get_queue(&mut conn, &mut vec);
+
+        Self::get_queue(&mut conn, &mut queue.list);
 
         let mut song_list = ContentList::new();
         song_list.list = conn.songs_filenames.clone();
@@ -32,7 +33,7 @@ impl App {
         Ok(Self {
             running: true,
             conn,
-            play_deque: vec,
+            play_deque: ContentList::new(),
             song_list,
             queue_list: ContentList::new(),
             pl_list,
@@ -45,23 +46,23 @@ impl App {
         self.running = false;
     }
 
-    pub fn get_queue(conn: &mut Connection, vec: &mut VecDeque<String>) {
+    pub fn get_queue(conn: &mut Connection, vec: &mut Vec<String>) {
         conn.conn.queue().unwrap().into_iter().for_each(|x| {
             if let Some(title) = x.title {
                 if let Some(artist) = x.artist {
-                    vec.push_back(format!("{} - {}", artist, title));
+                    vec.push(format!("{} - {}", artist, title));
                 } else {
-                    vec.push_back(title)
+                    vec.push(title)
                 }
             } else {
-                vec.push_back(x.file)
+                vec.push(x.file)
             }
         });
     }
 
     pub fn update_queue(&mut self) {
-        self.play_deque.clear();
-        Self::get_queue(&mut self.conn, &mut self.play_deque);
+        self.queue_list.list.clear();
+        Self::get_queue(&mut self.conn, &mut self.queue_list.list);
     }
 
     pub fn get_playlist(conn: &mut Client) -> AppResult<Vec<String>> {

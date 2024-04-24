@@ -132,7 +132,7 @@ impl Connection {
 
     /// Gives title of current playing song
     pub fn now_playing(&mut self) -> Result<Option<String>> {
-        let song = self.conn.currentsong()?.unwrap();
+        let song = self.conn.currentsong()?.unwrap_or_default();
         if let Some(s) = song.title {
             if let Some(a) = song.artist {
                 return Ok(Some(format!("{} - {}", s, a)));

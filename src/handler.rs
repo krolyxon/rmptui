@@ -19,7 +19,9 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         }
 
         KeyCode::Enter | KeyCode::Char('l') => {
-            let song = app.conn.get_song_with_only_filename(app.conn.songs_filenames.get(app.song_list.index).unwrap());
+            let song = app.conn.get_song_with_only_filename(
+                app.conn.songs_filenames.get(app.song_list.index).unwrap(),
+            );
             app.conn.push(&song)?;
             // app.update_queue();
         }
@@ -35,7 +37,6 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             app.conn.pause();
         }
 
-
         // Clearn Queue
         KeyCode::Char('x') => {
             app.conn.conn.clear()?;
@@ -46,31 +47,39 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             app.conn.play_dmenu()?;
         }
 
-        KeyCode::Down=> {
-            app.pl_list.next();
+        KeyCode::Down => {
+            if key_event.modifiers == KeyModifiers::SHIFT {
+                app.queue_list.next();
+            } else {
+                app.pl_list.next();
+            }
         }
 
-        KeyCode::Up=> {
-            app.pl_list.prev();
+        KeyCode::Up => {
+            if key_event.modifiers == KeyModifiers::SHIFT {
+                app.queue_list.prev();
+            } else {
+                app.pl_list.prev();
+            }
         }
-
 
         KeyCode::Right => {
-            app.conn.push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
+            app.conn
+                .push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
         }
 
-        KeyCode::Char('f')=> {
+        KeyCode::Char('f') => {
             // let place = app.conn.conn.status().unwrap().duration;
             let (pos, _) = app.conn.conn.status().unwrap().time.unwrap();
             let pos: i64 = (pos.as_secs() + 2).try_into().unwrap();
-            app.conn.conn.seek(2, pos )?;
+            app.conn.conn.seek(2, pos)?;
         }
 
-        KeyCode::Char('b')=> {
+        KeyCode::Char('b') => {
             // let place = app.conn.conn.status().unwrap().duration;
             let (pos, _) = app.conn.conn.status().unwrap().time.unwrap();
             let pos: i64 = (pos.as_secs() - 2).try_into().unwrap();
-            app.conn.conn.seek(2, pos )?;
+            app.conn.conn.seek(2, pos)?;
         }
         _ => {}
     }
