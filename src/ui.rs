@@ -1,7 +1,6 @@
 use crate::app::{App, AppResult, SelectedTab};
 use ratatui::{
     prelude::*,
-    style::palette::tailwind,
     widgets::{block::Title, *},
 };
 
@@ -16,8 +15,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(vec![
-            Constraint::Percentage(5),
-            Constraint::Percentage(88),
+            Constraint::Percentage(0),
+            // Constraint::Percentage(88),
+            Constraint::Percentage(93),
             Constraint::Percentage(7),
         ])
         .split(frame.size());
@@ -37,30 +37,35 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     // draw_playlists(frame, app, inner_layout[1]);
     draw_progress_bar(frame, app, layout[2]);
 
-    let highlight_style = (Color::default(), tailwind::YELLOW.c700);
-    let tab = Tabs::new(vec!["Songs List", "Play Queue", "Playlists"])
-        .block(Block::default().title("Tabs").borders(Borders::ALL))
-        .style(Style::default().white())
-        .highlight_style(highlight_style)
-        .divider(" ")
-        .select(app.selected_tab.clone() as usize)
-        .padding("", "");
-    frame.render_widget(tab, layout[0]);
+    // let highlight_style = (Color::default(), tailwind::YELLOW.c700);
+    // let tab = Tabs::new(vec!["Songs List", "Play Queue", "Playlists"])
+    //     .block(Block::default().title("Tabs").borders(Borders::ALL))
+    //     .style(Style::default().white())
+    //     .highlight_style(highlight_style)
+    //     .divider(" ")
+    //     .select(app.selected_tab.clone() as usize)
+    //     .padding("", "");
+    // frame.render_widget(tab, layout[0]);
 
     match app.selected_tab {
         SelectedTab::SongList => draw_song_list(frame, app, layout[1]),
-        SelectedTab::Queue  => draw_queue(frame, app, layout[1]),
-        SelectedTab::Playlists  => draw_playlists(frame, app, layout[1]),
+        SelectedTab::Queue => draw_queue(frame, app, layout[1]),
+        SelectedTab::Playlists => draw_playlists(frame, app, layout[1]),
     }
 }
 
 /// draws list of songs
 fn draw_song_list(frame: &mut Frame, app: &mut App, size: Rect) {
     let mut song_state = ListState::default();
+    let total_songs = app.conn.conn.stats().unwrap().songs.to_string();
     let list = List::new(app.conn.songs_filenames.clone())
         .block(
             Block::default()
                 .title("Song List".green().bold())
+                .title(
+                    Title::from(format!("Total Songs: {}", total_songs).bold().green())
+                        .alignment(Alignment::Right),
+                )
                 .borders(Borders::ALL),
         )
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
@@ -74,16 +79,13 @@ fn draw_song_list(frame: &mut Frame, app: &mut App, size: Rect) {
 /// draws playing queue
 fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
     let mut queue_state = ListState::default();
-    let title = Block::default()
-        .title(Title::from("Play Queue".green().bold()))
-        .title("Shift + ▲ ▼  to scroll, Shift + Enter to play".yellow());
+    let title = Block::default().title(Title::from("Play Queue".green().bold()));
     let list = List::new(app.queue_list.list.clone())
         .block(title.borders(Borders::ALL))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>")
         .repeat_highlight_symbol(true);
 
-    app.update_queue();
     queue_state.select(Some(app.queue_list.index));
     frame.render_stateful_widget(list, size, &mut queue_state);
 }
@@ -92,9 +94,7 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
 fn draw_playlists(frame: &mut Frame, app: &mut App, size: Rect) {
     let mut state = ListState::default();
 
-    let title = Block::default()
-        .title(Title::from("Playlist".green().bold()))
-        .title("▲ ▼  to scroll, Use ► to add playlist to queue".yellow());
+    let title = Block::default().title(Title::from("Playlist".green().bold()));
     let list = List::new(app.pl_list.list.clone())
         .block(title.borders(Borders::ALL))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
@@ -118,8 +118,22 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
 
     let title = Block::default()
         .title(Title::from(format!("{}: ", state).red().bold()))
-        .title(Title::from(song.green().bold()));
-        // .title(Title::from(app.conn.conn.status().unwrap_or_default().volume.to_string().yellow())).title_alignment(Alignment::Right);
+        .title(Title::from(song.green().bold()))
+        .title(
+            Title::from(
+                format!(
+                    "{}/{}",
+                    app.conn.elapsed.as_secs(),
+                    app.conn.total_duration.as_secs()
+                )
+                .cyan()
+                .bold(),
+            )
+            .alignment(Alignment::Right),
+        )
+        .borders(Borders::ALL);
+
+    // .title(Title::from(app.conn.conn.status().unwrap_or_default().volume.to_string().yellow())).title_alignment(Alignment::Right);
     let progress_bar = LineGauge::default()
         .block(title.borders(Borders::ALL))
         .gauge_style(
@@ -129,7 +143,7 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
                 .add_modifier(Modifier::BOLD),
         )
         .line_set(symbols::line::THICK)
-        .ratio(0.2);
+        .ratio(app.conn.get_progress_ratio());
 
     frame.render_widget(progress_bar, size);
 }

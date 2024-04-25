@@ -2,6 +2,7 @@ use mpd::song::Song;
 use mpd::{Client, State};
 use simple_dmenu::dmenu;
 use std::process::Command;
+use std::time::Duration;
 
 pub type Result<T> = core::result::Result<T, Error>;
 pub type Error = Box<dyn std::error::Error>;
@@ -11,6 +12,8 @@ pub struct Connection {
     pub conn: Client,
     pub songs_filenames: Vec<String>,
     pub state: String,
+    pub elapsed: Duration,
+    pub total_duration: Duration,
 }
 
 impl Connection {
@@ -24,10 +27,14 @@ impl Connection {
             .map(|x| x.file)
             .collect();
 
+        let (elapsed, total) = conn.status().unwrap().time.unwrap_or_default();
+
         Ok(Self {
             conn,
             songs_filenames,
             state: "Stopped".to_string(),
+            elapsed,
+            total_duration: total,
         })
     }
 
@@ -62,6 +69,26 @@ impl Connection {
             State::Pause => self.state = "Paused".to_string(),
         }
         self.state.clone()
+    }
+
+    pub fn update_progress(&mut self) {
+        let (elapsed, total) = self.conn.status().unwrap().time.unwrap_or_default();
+        self.elapsed = elapsed;
+        self.total_duration = total;
+    }
+
+    pub fn get_progress_ratio(&self) -> f64 {
+        let total = self.total_duration.as_secs_f64();
+        if total == 0.0 {
+            0.0
+        } else {
+            let ratio = self.elapsed.as_secs_f64() / self.total_duration.as_secs_f64();
+            if ratio > 1.0 || ratio == 0.0 {
+                1.0
+            } else {
+                ratio
+            }
+        }
     }
 
     /// push the given song to queue

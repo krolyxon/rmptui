@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::connection::Connection;
 use crate::list::ContentList;
 use mpd::Client;
@@ -56,7 +58,11 @@ impl App {
         })
     }
 
-    pub fn tick(&self) {}
+    pub fn tick(&mut self) {
+        self.conn.update_state();
+        self.conn.update_progress();
+        self.update_queue();
+    }
 
     pub fn quit(&mut self) {
         self.running = false;
@@ -76,8 +82,7 @@ impl App {
         // });
         conn.conn.queue().unwrap().into_iter().for_each(|x| {
             vec.push(x.file);
-        }
-        );
+        });
     }
 
     pub fn update_queue(&mut self) {
