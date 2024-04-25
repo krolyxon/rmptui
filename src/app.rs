@@ -65,6 +65,7 @@ impl App {
     pub fn tick(&mut self) {
         self.conn.update_state();
         self.conn.update_progress();
+        self.conn.update_volume();
         self.update_queue();
         self.browser.update_directory(&mut self.conn).unwrap();
     }
@@ -97,7 +98,6 @@ impl App {
 
     pub fn get_playlist(conn: &mut Client) -> AppResult<Vec<String>> {
         let list: Vec<String> = conn.playlists()?.iter().map(|p| p.clone().name).collect();
-
         Ok(list)
     }
 

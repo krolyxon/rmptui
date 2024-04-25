@@ -2,8 +2,6 @@ use std::time::Duration;
 
 use crate::app::{App, AppResult, SelectedTab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use mpd::{Query, Term};
-use ratatui::style::Modifier;
 use rust_fuzzy_search;
 use simple_dmenu::dmenu;
 
@@ -13,6 +11,8 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         KeyCode::Char('c') | KeyCode::Char('C') => {
             if key_event.modifiers == KeyModifiers::CONTROL {
                 app.quit();
+            } else {
+                app.conn.conn.clear()?;
             }
         }
 
@@ -68,12 +68,6 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             app.conn.pause();
         }
 
-        // Clear Queue
-        KeyCode::Char('x') => {
-            app.conn.conn.clear()?;
-            // app.update_queue();
-        }
-
         // Dmenu prompt
         KeyCode::Char('D') => {
             app.conn.play_dmenu()?;
@@ -122,22 +116,23 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             app.selected_tab = SelectedTab::Playlists;
         }
 
-
-        KeyCode::Char('n') => {
+        KeyCode::Char('>') => {
             app.conn.conn.next()?;
         }
 
-        KeyCode::Char('N') => {
+        KeyCode::Char('<') => {
             app.conn.conn.prev()?;
         }
 
         // Volume controls
         KeyCode::Char('=') => {
             app.conn.inc_volume(2);
+            app.conn.update_volume();
         }
 
         KeyCode::Char('-') => {
             app.conn.dec_volume(2);
+            app.conn.update_volume();
         }
 
         // Delete highlighted song from the queue

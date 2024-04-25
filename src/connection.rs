@@ -14,6 +14,7 @@ pub struct Connection {
     pub state: String,
     pub elapsed: Duration,
     pub total_duration: Duration,
+    pub volume: u8,
 }
 
 impl Connection {
@@ -26,8 +27,8 @@ impl Connection {
             .into_iter()
             .map(|x| x.file)
             .collect();
-
         let (elapsed, total) = conn.status().unwrap().time.unwrap_or_default();
+        let volume: u8 = conn.status().unwrap_or_default().volume as u8;
 
         Ok(Self {
             conn,
@@ -35,6 +36,7 @@ impl Connection {
             state: "Stopped".to_string(),
             elapsed,
             total_duration: total,
+            volume,
         })
     }
 
@@ -77,6 +79,10 @@ impl Connection {
         self.total_duration = total;
     }
 
+    pub fn update_volume(&mut self) {
+        self.volume = self.conn.status().unwrap_or_default().volume as u8;
+    }
+
     pub fn get_progress_ratio(&self) -> f64 {
         let total = self.total_duration.as_secs_f64();
         if total == 0.0 {
@@ -84,7 +90,7 @@ impl Connection {
         } else {
             let ratio = self.elapsed.as_secs_f64() / self.total_duration.as_secs_f64();
             if ratio > 1.0 || ratio == 0.0 {
-                1.0
+                0.0
             } else {
                 ratio
             }
