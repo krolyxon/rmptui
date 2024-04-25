@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::browser::FileBrowser;
 use crate::connection::Connection;
 use crate::list::ContentList;
 use mpd::Client;
@@ -17,11 +18,12 @@ pub struct App {
     pub queue_list: ContentList<String>,
     pub pl_list: ContentList<String>,
     pub selected_tab: SelectedTab,
+    pub browser: FileBrowser,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SelectedTab {
-    SongList,
+    DirectoryBrowser,
     Queue,
     Playlists,
 }
@@ -29,9 +31,9 @@ pub enum SelectedTab {
 impl SelectedTab {
     fn as_usize(&self) {
         match self {
-            SelectedTab::SongList => 0,
-            SelectedTab::Queue => 1,
-            SelectedTab::Playlists => 2,
+            SelectedTab::Queue => 0,
+            SelectedTab::Playlists => 1,
+            SelectedTab::DirectoryBrowser => 2,
         };
     }
 }
@@ -48,13 +50,15 @@ impl App {
         let mut song_list = ContentList::new();
         song_list.list = conn.songs_filenames.clone();
 
+        let browser = FileBrowser::new();
         Ok(Self {
             running: true,
             conn,
             song_list,
             queue_list,
             pl_list,
-            selected_tab: SelectedTab::SongList,
+            selected_tab: SelectedTab::DirectoryBrowser,
+            browser,
         })
     }
 
@@ -62,6 +66,7 @@ impl App {
         self.conn.update_state();
         self.conn.update_progress();
         self.update_queue();
+        self.browser.update_directory(&mut self.conn).unwrap();
     }
 
     pub fn quit(&mut self) {
@@ -103,9 +108,9 @@ impl App {
 
     pub fn cycle_tabls(&mut self) {
         self.selected_tab = match self.selected_tab {
-            SelectedTab::SongList => SelectedTab::Queue,
+            SelectedTab::DirectoryBrowser => SelectedTab::Queue,
             SelectedTab::Queue => SelectedTab::Playlists,
-            SelectedTab::Playlists => SelectedTab::SongList,
+            SelectedTab::Playlists => SelectedTab::DirectoryBrowser,
         };
     }
 }

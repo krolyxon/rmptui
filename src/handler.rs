@@ -17,13 +17,13 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         }
 
         KeyCode::Char('j') | KeyCode::Down => match app.selected_tab {
-            SelectedTab::SongList => app.song_list.next(),
+            SelectedTab::DirectoryBrowser => app.browser.next(),
             SelectedTab::Queue => app.queue_list.next(),
             SelectedTab::Playlists => app.pl_list.next(),
         },
 
         KeyCode::Char('k') | KeyCode::Up => match app.selected_tab {
-            SelectedTab::SongList => app.song_list.prev(),
+            SelectedTab::DirectoryBrowser => app.browser.prev(),
             SelectedTab::Queue => app.queue_list.prev(),
             SelectedTab::Playlists => app.pl_list.prev(),
         },
@@ -32,12 +32,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             // app.update_queue();
 
             match app.selected_tab {
-                SelectedTab::SongList => {
-                    let song = app.conn.get_song_with_only_filename(
-                        app.conn.songs_filenames.get(app.song_list.index).unwrap(),
-                    );
-                    app.conn.push(&song)?;
+                SelectedTab::DirectoryBrowser => {
+                    app.browser.handle_enter(&mut app.conn)?;
                 }
+
                 SelectedTab::Queue => {
                     let song = app.conn.get_song_with_only_filename(
                         app.queue_list.list.get(app.queue_list.index).unwrap(),
@@ -50,6 +48,14 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 }
             }
         }
+
+        KeyCode::Char('h') => match app.selected_tab {
+            SelectedTab::DirectoryBrowser => {
+                app.browser.handle_go_back(&mut app.conn)?;
+            }
+            SelectedTab::Queue => {}
+            SelectedTab::Playlists => {}
+        },
 
         // Playback controls
         // Toggle Pause
@@ -105,7 +111,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         }
 
         KeyCode::Char('1') => {
-            app.selected_tab = SelectedTab::SongList;
+            app.selected_tab = SelectedTab::DirectoryBrowser;
         }
 
         KeyCode::Char('2') => {
@@ -115,6 +121,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         KeyCode::Char('3') => {
             app.selected_tab = SelectedTab::Playlists;
         }
+
 
         KeyCode::Char('n') => {
             app.conn.conn.next()?;

@@ -1,4 +1,7 @@
-use crate::app::{App, AppResult, SelectedTab};
+use crate::{
+    app::{App, AppResult, SelectedTab},
+    browser::FileBrowser,
+};
 use ratatui::{
     prelude::*,
     widgets::{block::Title, *},
@@ -48,9 +51,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     // frame.render_widget(tab, layout[0]);
 
     match app.selected_tab {
-        SelectedTab::SongList => draw_song_list(frame, app, layout[1]),
+        // SelectedTab::SongList => draw_song_list(frame, app, layout[1]),
         SelectedTab::Queue => draw_queue(frame, app, layout[1]),
         SelectedTab::Playlists => draw_playlists(frame, app, layout[1]),
+        SelectedTab::DirectoryBrowser => draw_directory_browser(frame, app, layout[1]),
     }
 }
 
@@ -146,4 +150,34 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
         .ratio(app.conn.get_progress_ratio());
 
     frame.render_widget(progress_bar, size);
+}
+
+fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
+    let mut song_state = ListState::default();
+    let total_songs = app.conn.conn.stats().unwrap().songs.to_string();
+    let mut list: Vec<String> = vec![];
+    for (t, s) in app.browser.filetree.iter() {
+        if t == "file" {
+            list.push(s.to_string());
+        } else {
+            list.push(format!("[{}]", *s));
+        }
+    }
+    let list = List::new(list)
+        .block(
+            Block::default()
+                .title(format!("File Browser: {}", app.browser.path.clone()).bold())
+                .title(
+                    Title::from(format!("Total Songs: {}", total_songs).bold().green())
+                        .alignment(Alignment::Right),
+                )
+                .borders(Borders::ALL),
+        )
+        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .highlight_symbol(">>")
+        .repeat_highlight_symbol(true)
+        .scroll_padding(20);
+
+    song_state.select(Some(app.browser.selected));
+    frame.render_stateful_widget(list, size, &mut song_state);
 }

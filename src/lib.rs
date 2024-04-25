@@ -13,6 +13,9 @@ pub mod tui;
 /// Content list
 pub mod list;
 
+/// File Browser
+pub mod browser;
+
 /// Event Handler
 pub mod event;
 
