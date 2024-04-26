@@ -78,6 +78,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
             Style::new()
                 .fg(Color::Cyan)
                 .bg(Color::Black)
+                .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::REVERSED),
         )
         .highlight_symbol(">>")
@@ -103,10 +104,10 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
             Style::new()
                 .fg(Color::Cyan)
                 .bg(Color::Black)
+                .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::REVERSED),
         )
-        .highlight_symbol(">>")
-        .repeat_highlight_symbol(true);
+        .highlight_symbol(">>");
 
     queue_state.select(Some(app.queue_list.index));
     frame.render_stateful_widget(list, size, &mut queue_state);
@@ -129,6 +130,7 @@ fn draw_playlists(frame: &mut Frame, app: &mut App, size: Rect) {
             Style::new()
                 .fg(Color::Cyan)
                 .bg(Color::Black)
+                .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::REVERSED),
         )
         .highlight_symbol(">>")

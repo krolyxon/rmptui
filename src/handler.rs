@@ -4,7 +4,7 @@ use crate::{
     app::{App, AppResult, SelectedTab},
     ui::InputMode,
 };
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rust_fuzzy_search::{self, fuzzy_search_sorted};
 use simple_dmenu::dmenu;
 
@@ -72,6 +72,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         }
     } else {
         match key_event.code {
+            // Quit
             KeyCode::Char('q') | KeyCode::Esc => app.quit(),
             KeyCode::Char('c') | KeyCode::Char('C') => {
                 if key_event.modifiers == KeyModifiers::CONTROL {
@@ -83,18 +84,21 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 }
             }
 
+            // Go Up
             KeyCode::Char('j') | KeyCode::Down => match app.selected_tab {
                 SelectedTab::DirectoryBrowser => app.browser.next(),
                 SelectedTab::Queue => app.queue_list.next(),
                 SelectedTab::Playlists => app.pl_list.next(),
             },
 
+            // Go down
             KeyCode::Char('k') | KeyCode::Up => match app.selected_tab {
                 SelectedTab::DirectoryBrowser => app.browser.prev(),
                 SelectedTab::Queue => app.queue_list.prev(),
                 SelectedTab::Playlists => app.pl_list.prev(),
             },
 
+            // Next directory
             KeyCode::Enter | KeyCode::Char('l') => {
                 // app.update_queue();
 
@@ -117,6 +121,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.conn.update_status();
             }
 
+            // head back to previous directory
             KeyCode::Char('h') => match app.selected_tab {
                 SelectedTab::DirectoryBrowser => {
                     app.browser.handle_go_back(&mut app.conn)?;
@@ -204,26 +209,32 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.conn.conn.seek(place, pos)?;
             }
 
+            // Cycle through tabs
             KeyCode::Tab => {
                 app.cycle_tabls();
             }
 
+            // Directory browser tab
             KeyCode::Char('1') => {
                 app.selected_tab = SelectedTab::DirectoryBrowser;
             }
 
+            // Playing queue tab
             KeyCode::Char('2') => {
                 app.selected_tab = SelectedTab::Queue;
             }
 
+            // Playlists tab
             KeyCode::Char('3') => {
                 app.selected_tab = SelectedTab::Playlists;
             }
 
+            // Play next song
             KeyCode::Char('>') => {
                 app.conn.conn.next()?;
             }
 
+            // Play previous song
             KeyCode::Char('<') => {
                 app.conn.conn.prev()?;
             }
@@ -251,25 +262,9 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.update_queue();
             }
 
+            // Update MPD database
             KeyCode::Char('U') => {
                 app.conn.conn.update()?;
-            }
-
-            KeyCode::Char('L') => {
-                let str = dmenu!(prompt "Search: ");
-                let list = app
-                    .conn
-                    .songs_filenames
-                    .iter()
-                    .map(|f| f.as_str())
-                    .collect::<Vec<&str>>();
-                let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&str, &list)
-                    .get(0)
-                    .unwrap()
-                    .clone();
-
-                let song = app.conn.get_song_with_only_filename(filename);
-                app.conn.push(&song)?;
             }
 
             // Search for songs
