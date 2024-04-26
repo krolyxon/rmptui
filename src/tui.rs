@@ -1,11 +1,7 @@
-use crate::connection::Connection;
+use std::io;
 use crate::ui;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
-use crossterm::{
-    terminal::{self, *},
-};
-use ratatui::prelude::*;
-use std::io::{self, stdout, Stdout};
+use crossterm::terminal::{self, *};
 use std::panic;
 
 use crate::app::{App, AppResult};

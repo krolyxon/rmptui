@@ -4,6 +4,21 @@ use ratatui::{
     widgets::{block::Title, *},
 };
 
+#[derive(Debug, PartialEq)]
+pub enum InputMode {
+    Editing,
+    Normal,
+}
+
+impl InputMode {
+    pub fn toggle_editing_states(state: &InputMode) -> InputMode {
+        match state {
+            InputMode::Editing => return InputMode::Normal,
+            InputMode::Normal => return InputMode::Editing,
+        };
+    }
+}
+
 /// Renders the user interface widgets
 pub fn render(app: &mut App, frame: &mut Frame) {
     // This is where you add new widgets.
@@ -23,7 +38,14 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         SelectedTab::DirectoryBrowser => draw_directory_browser(frame, app, layout[0]),
     }
 
-    draw_progress_bar(frame, app, layout[1]);
+    match app.inputmode {
+        InputMode::Normal => {
+            draw_progress_bar(frame, app, layout[1]);
+        }
+        InputMode::Editing => {
+            draw_search_bar(frame, app, layout[1]);
+        }
+    }
 }
 
 /// Draws the file tree browser
@@ -116,6 +138,37 @@ fn draw_playlists(frame: &mut Frame, app: &mut App, size: Rect) {
     frame.render_stateful_widget(list, size, &mut state);
 }
 
+// Draw search bar
+fn draw_search_bar(frame: &mut Frame, app: &mut App, size: Rect) {
+    match app.inputmode {
+        InputMode::Normal =>
+            // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
+            {}
+
+        InputMode::Editing => {
+            // Make the cursor visible and ask ratatui to put it at the specified coordinates after
+            // rendering
+            #[allow(clippy::cast_possible_truncation)]
+            frame.set_cursor(
+                // Draw the cursor at the current position in the input field.
+                // This position is can be controlled via the left and right arrow key
+                size.x + app.cursor_position as u16 + 2,
+                // Move one line down, from the border to the input line
+                size.y + 1,
+            );
+        }
+    }
+
+    let input = Paragraph::new("/".to_string() + &app.search_input)
+        .style(Style::default())
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Search Forward: ".bold().green()),
+        );
+    frame.render_widget(input, size);
+}
+
 /// Draws Progress Bar
 fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
     // Get the current playing song
@@ -151,14 +204,13 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
         modes_bottom.push(']');
     };
 
-
     // get the duration
     let duration = if app.conn.total_duration.as_secs() != 0 {
-    format!(
-        "[{}/{}]",
-        humantime::format_duration(app.conn.elapsed),
-        humantime::format_duration(app.conn.total_duration)
-    )
+        format!(
+            "[{}/{}]",
+            humantime::format_duration(app.conn.elapsed),
+            humantime::format_duration(app.conn.total_duration)
+        )
     } else {
         "".to_string()
     };

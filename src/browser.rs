@@ -1,5 +1,3 @@
-use mpd::Query;
-
 use crate::{app::AppResult, connection::Connection};
 
 #[derive(Debug)]

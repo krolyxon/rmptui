@@ -28,6 +28,6 @@ A MPD client in Rust
 - [x] fix performance issues
 - [ ] improvements on queue control
 - [ ] add to playlists, playlists view
-- [ ] search for songs
+- [x] search for songs
 - [ ] metadata based tree view
-- [ ] Humantime format
+- [x] Humantime format
