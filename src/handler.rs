@@ -4,7 +4,7 @@ use crate::{
     app::{App, AppResult, SelectedTab},
     ui::InputMode,
 };
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
 use rust_fuzzy_search::{self, fuzzy_search_sorted};
 use simple_dmenu::dmenu;
 
@@ -79,6 +79,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 } else {
                     app.conn.conn.clear()?;
                     app.conn.update_status();
+                    app.queue_list.list.clear();
                 }
             }
 
@@ -154,21 +155,28 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // add to queue
             KeyCode::Char('a') => {
-                // let song = app.conn.get_song_with_only_filename(
-                // app.conn.songs_filenames.get(app.song_list.index).unwrap(),
-                // );
-
                 let list = app
                     .conn
                     .songs_filenames
                     .iter()
                     .map(|f| f.as_str())
                     .collect::<Vec<&str>>();
-                let (filename, _) =
-                    rust_fuzzy_search::fuzzy_search_sorted(&app.browser.path, &list)
-                        .get(0)
-                        .unwrap()
-                        .clone();
+
+                let files: Vec<String> = app
+                    .browser
+                    .filetree
+                    .clone()
+                    .into_iter()
+                    .map(|(_, f)| f)
+                    .collect();
+
+                let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(
+                    &files.get(app.browser.selected).unwrap(),
+                    &list,
+                )
+                .get(0)
+                .unwrap()
+                .clone();
 
                 let song = app.conn.get_song_with_only_filename(filename);
 
@@ -180,6 +188,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     .push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
             }
 
+            // Fast forward
             KeyCode::Char('f') => {
                 let place = app.conn.conn.status().unwrap().song.unwrap().pos;
                 let (pos, _) = app.conn.conn.status().unwrap().time.unwrap();
@@ -187,6 +196,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.conn.conn.seek(place, pos)?;
             }
 
+            // backward
             KeyCode::Char('b') => {
                 let place = app.conn.conn.status().unwrap().song.unwrap().pos;
                 let (pos, _) = app.conn.conn.status().unwrap().time.unwrap();
