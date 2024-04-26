@@ -1,4 +1,8 @@
+## rmptui (Rust Music Player TUI(💀))
 A MPD client in Rust
+
+## rmptui in action
+![](https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/ss.png)
 
 ### Keys
 - `q` OR `Ctr+C` to quit
@@ -23,6 +27,7 @@ A MPD client in Rust
 - `U` to update the MPD database
 - `r` to toggle repeat
 - `z` to toggle random
+- `/` to search
 
 ### TODO
 - [x] fix performance issues

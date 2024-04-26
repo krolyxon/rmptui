@@ -37,12 +37,12 @@ fn main() -> AppResult<()> {
             Some(Command::Pause) => app.conn.pause(),
             Some(Command::Toggle) => app.conn.toggle_pause(),
             _ => {
-                let mut vec: Vec<RSong> = Vec::new();
-                for filename in app.conn.songs_filenames {
-                    let song = RSong::new(&mut app.conn.conn, filename);
-                    vec.push(song);
-                }
-                println!("{:#?}", vec);
+                // let mut vec: Vec<RSong> = Vec::new();
+                // for filename in app.conn.songs_filenames {
+                //     let song = RSong::new(&mut app.conn.conn, filename);
+                //     vec.push(song);
+                // }
+                // println!("{:#?}", vec);
 
             }
         }
