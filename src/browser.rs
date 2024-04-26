@@ -1,3 +1,5 @@
+use mpd::Query;
+
 use crate::{app::AppResult, connection::Connection};
 
 #[derive(Debug)]
@@ -59,32 +61,45 @@ impl FileBrowser {
         if t == "directory" {
             if path != "." {
                 self.prev_path = self.path.clone();
-                self.path = path.to_string();
+                self.path = self.prev_path.clone() + "/" + path;
                 self.update_directory(conn)?;
                 self.prev_selected = self.selected;
                 self.selected = 0;
+                // println!("self.path: {}", self.path);
+                // println!("self.prev_pat: {}", self.prev_path);
             }
         } else {
-            let list = conn
-                .songs_filenames
-                .iter()
-                .map(|f| f.as_str())
-                .collect::<Vec<&str>>();
-            let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&path, &list)
-                .get(0)
-                .unwrap()
-                .clone();
+            // let list = conn
+            //     .songs_filenames
+            //     .iter()
+            //     .map(|f| f.as_str())
+            //     .collect::<Vec<&str>>();
+            // let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&path, &list)
+            //     .get(0)
+            //     .unwrap()
+            //     .clone();
 
-            let song = conn.get_song_with_only_filename(filename);
-            conn.push(&song)?;
+            for filename in conn.songs_filenames.clone().iter() {
+                if filename.contains(path) {
+                    let song = conn.get_song_with_only_filename(filename);
+                    conn.push(&song)?;
+                }
+            }
         }
         Ok(())
     }
 
     pub fn handle_go_back(&mut self, conn: &mut Connection) -> AppResult<()> {
-        self.path = self.prev_path.clone();
+        if self.prev_path != "." {
+            let r = self.path.rfind("/").unwrap();
+            self.path = self.path.as_str()[..r].to_string();
+            self.update_directory(conn)?;
+        } else {
+            self.path = self.prev_path.clone();
+            self.update_directory(conn)?;
+        }
+
         self.selected = self.prev_selected;
-        self.update_directory(conn)?;
         Ok(())
     }
 }

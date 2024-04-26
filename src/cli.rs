@@ -6,10 +6,10 @@ use clap::{Parser, Subcommand};
 pub struct Args {
     /// No TUI
     #[arg(short= 'n', default_value="false")]
-    pub no_tui: bool,
+    pub tui: bool,
 
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
 }
 
 #[derive(Debug, Subcommand)]

@@ -1,7 +1,7 @@
 A MPD client in Rust
 
 ### Keys
-- `q` OR 'Ctr+C' to quit
+- `q` OR `Ctr+C` to quit
 - `p` to toggle pause
 - `+` to increase volume
 - `-` to decrease volume
@@ -16,9 +16,18 @@ A MPD client in Rust
 - `3` to go to playlists view
 - `Enter` to add song/playlist to current playlist
 - `a` to append the song to current playing queue
-- `f` to go forward
-- `b` to go backwords
+- `f` to go forwards
+- `b` to go backwards
 - `>` to play next song from queue
 - `<` to play previous song from queue
 - `U` to update the MPD database
+- `r` to toggle repeat
+- `z` to toggle random
 
+### TODO
+- [x] fix performance issues
+- [ ] improvements on queue control
+- [ ] add to playlists, playlists view
+- [ ] search for songs
+- [ ] metadata based tree view
+- [ ] Humantime format

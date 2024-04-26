@@ -13,6 +13,9 @@ pub mod tui;
 /// Content list
 pub mod list;
 
+/// Song
+pub mod song;
+
 /// File Browser
 pub mod browser;
 

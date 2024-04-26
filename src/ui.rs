@@ -14,7 +14,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     // Layout
     let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(vec![Constraint::Percentage(93), Constraint::Percentage(7)])
+        .constraints(vec![Constraint::Percentage(93), Constraint::Min(3)])
         .split(frame.size());
 
     match app.selected_tab {
@@ -52,7 +52,12 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
                 )
                 .borders(Borders::ALL),
         )
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .highlight_style(
+            Style::new()
+                .fg(Color::Cyan)
+                .bg(Color::Black)
+                .add_modifier(Modifier::REVERSED),
+        )
         .highlight_symbol(">>")
         .repeat_highlight_symbol(true)
         .scroll_padding(20);
@@ -72,7 +77,12 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
         );
     let list = List::new(app.queue_list.list.clone())
         .block(title.borders(Borders::ALL))
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .highlight_style(
+            Style::new()
+                .fg(Color::Cyan)
+                .bg(Color::Black)
+                .add_modifier(Modifier::REVERSED),
+        )
         .highlight_symbol(">>")
         .repeat_highlight_symbol(true);
 
@@ -93,7 +103,12 @@ fn draw_playlists(frame: &mut Frame, app: &mut App, size: Rect) {
 
     let list = List::new(app.pl_list.list.clone())
         .block(title.borders(Borders::ALL))
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .highlight_style(
+            Style::new()
+                .fg(Color::Cyan)
+                .bg(Color::Black)
+                .add_modifier(Modifier::REVERSED),
+        )
         .highlight_symbol(">>")
         .repeat_highlight_symbol(true);
 
@@ -103,39 +118,65 @@ fn draw_playlists(frame: &mut Frame, app: &mut App, size: Rect) {
 
 /// Draws Progress Bar
 fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
+    // Get the current playing song
     let song = app
         .conn
         .now_playing()
         .unwrap()
         .unwrap_or_else(|| "No Title Found".to_string());
 
-    let state = &app.conn.state;
-    // let (elapsed, total) = app.conn.conn.status().unwrap().time.unwrap_or_default();
+    // Get the current playing state
+    let mut state: String = String::new();
+    if !app.queue_list.list.is_empty() {
+        state = app.conn.state.clone();
+        state.push(':');
+    }
 
+    // Get the current modes
+    let mut modes_bottom: String = String::new();
+    // we do this to check if at least one mode is enabled so we can push "[]"
+    if app.conn.repeat | app.conn.random {
+        modes_bottom.push('r');
+    }
+
+    if !modes_bottom.is_empty() {
+        modes_bottom.clear();
+        modes_bottom.push('[');
+        if app.conn.repeat {
+            modes_bottom.push('r');
+        }
+        if app.conn.random {
+            modes_bottom.push('z');
+        }
+        modes_bottom.push(']');
+    };
+
+
+    // get the duration
+    let duration = if app.conn.total_duration.as_secs() != 0 {
+    format!(
+        "[{}/{}]",
+        humantime::format_duration(app.conn.elapsed),
+        humantime::format_duration(app.conn.total_duration)
+    )
+    } else {
+        "".to_string()
+    };
+
+    // Define the title
     let title = Block::default()
-        .title(Title::from(format!("{}: ", state).red().bold()))
+        .title(Title::from(format!("{}", state).red().bold()))
         .title(Title::from(song.green().bold()))
-        .title(
-            Title::from(
-                format!(
-                    "{}/{}",
-                    app.conn.elapsed.as_secs(),
-                    app.conn.total_duration.as_secs()
-                )
-                .cyan()
-                .bold(),
-            )
-            .alignment(Alignment::Right),
-        )
+        .title(Title::from(duration.cyan().bold()).alignment(Alignment::Right))
+        .title(Title::from(format!("{}", modes_bottom)).position(block::Position::Bottom))
         .borders(Borders::ALL);
 
-    // .title(Title::from(app.conn.conn.status().unwrap_or_default().volume.to_string().yellow())).title_alignment(Alignment::Right);
     let progress_bar = LineGauge::default()
         .block(title.borders(Borders::ALL))
         .gauge_style(
             Style::default()
-                .fg(Color::LightBlue)
-                .bg(Color::Gray)
+                .fg(Color::Blue)
+                .bg(Color::Black)
                 .add_modifier(Modifier::BOLD),
         )
         .line_set(symbols::line::THICK)

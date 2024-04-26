@@ -13,6 +13,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.quit();
             } else {
                 app.conn.conn.clear()?;
+                app.conn.update_status();
             }
         }
 
@@ -47,6 +48,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         .push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
                 }
             }
+            app.conn.update_status();
         }
 
         KeyCode::Char('h') => match app.selected_tab {
@@ -68,6 +70,18 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             app.conn.pause();
         }
 
+        // Toggle rpeat
+        KeyCode::Char('r') => {
+            app.conn.toggle_repeat();
+            app.conn.update_status();
+        }
+
+        // Toggle random
+        KeyCode::Char('z') => {
+            app.conn.toggle_random();
+            app.conn.update_status();
+        }
+
         // Dmenu prompt
         KeyCode::Char('D') => {
             app.conn.play_dmenu()?;
@@ -75,9 +89,23 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
         // add to queue
         KeyCode::Char('a') => {
-            let song = app.conn.get_song_with_only_filename(
-                app.conn.songs_filenames.get(app.song_list.index).unwrap(),
-            );
+            // let song = app.conn.get_song_with_only_filename(
+            // app.conn.songs_filenames.get(app.song_list.index).unwrap(),
+            // );
+
+            let list = app
+                .conn
+                .songs_filenames
+                .iter()
+                .map(|f| f.as_str())
+                .collect::<Vec<&str>>();
+            let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&app.browser.path, &list)
+                .get(0)
+                .unwrap()
+                .clone();
+
+            let song = app.conn.get_song_with_only_filename(filename);
+
             app.conn.conn.push(&song)?;
         }
 
@@ -127,16 +155,22 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         // Volume controls
         KeyCode::Char('=') => {
             app.conn.inc_volume(2);
-            app.conn.update_volume();
+            app.conn.update_status();
         }
 
         KeyCode::Char('-') => {
             app.conn.dec_volume(2);
-            app.conn.update_volume();
+            app.conn.update_status();
         }
 
         // Delete highlighted song from the queue
         KeyCode::Char('d') => {
+            if app.queue_list.index >= app.queue_list.list.len() - 1 {
+                if app.queue_list.index != 0 {
+                    app.queue_list.index -= 1;
+                }
+            }
+
             app.conn.conn.delete(app.queue_list.index as u32)?;
             app.update_queue();
         }

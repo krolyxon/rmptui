@@ -14,7 +14,6 @@ pub struct App {
     /// check if app is running
     pub running: bool,
     pub conn: Connection,
-    pub song_list: ContentList<String>,
     pub queue_list: ContentList<String>,
     pub pl_list: ContentList<String>,
     pub selected_tab: SelectedTab,
@@ -28,16 +27,6 @@ pub enum SelectedTab {
     Playlists,
 }
 
-impl SelectedTab {
-    fn as_usize(&self) {
-        match self {
-            SelectedTab::Queue => 0,
-            SelectedTab::Playlists => 1,
-            SelectedTab::DirectoryBrowser => 2,
-        };
-    }
-}
-
 impl App {
     pub fn builder(addrs: &str) -> AppResult<Self> {
         let mut conn = Connection::new(addrs).unwrap();
@@ -47,14 +36,10 @@ impl App {
 
         Self::get_queue(&mut conn, &mut queue_list.list);
 
-        let mut song_list = ContentList::new();
-        song_list.list = conn.songs_filenames.clone();
-
         let browser = FileBrowser::new();
         Ok(Self {
             running: true,
             conn,
-            song_list,
             queue_list,
             pl_list,
             selected_tab: SelectedTab::DirectoryBrowser,
@@ -63,11 +48,9 @@ impl App {
     }
 
     pub fn tick(&mut self) {
-        self.conn.update_state();
-        self.conn.update_progress();
-        self.conn.update_volume();
+        self.conn.update_status();
         self.update_queue();
-        self.browser.update_directory(&mut self.conn).unwrap();
+        // self.browser.update_directory(&mut self.conn).unwrap();
     }
 
     pub fn quit(&mut self) {

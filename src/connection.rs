@@ -15,6 +15,8 @@ pub struct Connection {
     pub elapsed: Duration,
     pub total_duration: Duration,
     pub volume: u8,
+    pub repeat: bool,
+    pub random: bool,
 }
 
 impl Connection {
@@ -27,8 +29,11 @@ impl Connection {
             .into_iter()
             .map(|x| x.file)
             .collect();
-        let (elapsed, total) = conn.status().unwrap().time.unwrap_or_default();
-        let volume: u8 = conn.status().unwrap_or_default().volume as u8;
+        let status = conn.status().unwrap();
+        let (elapsed, total) = status.time.unwrap_or_default();
+        let volume: u8 = status.volume as u8;
+        let repeat = status.repeat;
+        let random = status.random;
 
         Ok(Self {
             conn,
@@ -37,6 +42,8 @@ impl Connection {
             elapsed,
             total_duration: total,
             volume,
+            repeat,
+            random,
         })
     }
 
@@ -64,25 +71,33 @@ impl Connection {
         Ok(())
     }
 
-    pub fn update_state(&mut self) -> String {
-        match self.conn.status().unwrap().state {
+    /// Update status
+    pub fn update_status(&mut self) {
+        let status = self.conn.status().unwrap();
+
+        // Playback State
+        match status.state {
             State::Stop => self.state = "Stopped".to_string(),
             State::Play => self.state = "Playing".to_string(),
             State::Pause => self.state = "Paused".to_string(),
         }
-        self.state.clone()
-    }
 
-    pub fn update_progress(&mut self) {
-        let (elapsed, total) = self.conn.status().unwrap().time.unwrap_or_default();
+        // Progress
+        let (elapsed, total) = status.time.unwrap_or_default();
         self.elapsed = elapsed;
         self.total_duration = total;
+
+        // Volume
+        self.volume = status.volume as u8;
+
+        // Repeat mode
+        self.repeat = status.repeat;
+
+        // Random mode
+        self.random = status.random;
     }
 
-    pub fn update_volume(&mut self) {
-        self.volume = self.conn.status().unwrap_or_default().volume as u8;
-    }
-
+    /// Get progress ratio of current playing song
     pub fn get_progress_ratio(&self) -> f64 {
         let total = self.total_duration.as_secs_f64();
         if total == 0.0 {
@@ -143,11 +158,6 @@ impl Connection {
         }
     }
 
-    /// get current playing song
-    pub fn get_current_song(&mut self) -> Option<String> {
-        self.conn.currentsong().unwrap().unwrap_or_default().title
-    }
-
     /// Print status to stdout
     pub fn status(&mut self) {
         let current_song = self.conn.currentsong();
@@ -170,7 +180,7 @@ impl Connection {
         let song = self.conn.currentsong()?.unwrap_or_default();
         if let Some(s) = song.title {
             if let Some(a) = song.artist {
-                return Ok(Some(format!("\"{}\" By {}", a, s)));
+                return Ok(Some(format!("\"{}\" By {}", s, a)));
             } else {
                 return Ok(Some(s));
             }
@@ -190,7 +200,26 @@ impl Connection {
         self.conn.toggle_pause().unwrap();
     }
 
+    /// Toggle Repeat mode
+    pub fn toggle_repeat(&mut self) {
+        if self.conn.status().unwrap().repeat {
+            self.conn.repeat(false).unwrap();
+        } else {
+            self.conn.repeat(true).unwrap();
+        }
+    }
+
+    /// Toggle random mode
+    pub fn toggle_random(&mut self) {
+        if self.conn.status().unwrap().random {
+            self.conn.random(false).unwrap();
+        } else {
+            self.conn.random(true).unwrap();
+        }
+    }
+
     // Volume controls
+    /// Increase Volume
     pub fn inc_volume(&mut self, v: i8) {
         let cur = self.conn.status().unwrap().volume;
         if cur + v <= 100 {
@@ -198,6 +227,7 @@ impl Connection {
         }
     }
 
+    /// Decrease volume
     pub fn dec_volume(&mut self, v: i8) {
         let cur = self.conn.status().unwrap().volume;
         if cur - v >= 0 {
