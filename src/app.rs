@@ -22,6 +22,10 @@ pub struct App {
     pub inputmode: InputMode,
     pub search_input: String,
     pub cursor_position: usize,
+
+    // add to playlists
+    pub playlist_popup: bool,
+    pub append_list: ContentList<String>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -38,6 +42,7 @@ impl App {
         let mut pl_list = ContentList::new();
         pl_list.list = Self::get_playlist(&mut conn.conn)?;
 
+        let append_list = Self::get_append_list(&mut conn.conn)?;
         Self::get_queue(&mut conn, &mut queue_list.list);
 
         let browser = FileBrowser::new();
@@ -51,6 +56,8 @@ impl App {
             inputmode: InputMode::Normal,
             search_input: String::new(),
             cursor_position: 0,
+            playlist_popup: false,
+            append_list,
         })
     }
 
@@ -91,6 +98,16 @@ impl App {
         Ok(list)
     }
 
+    pub fn get_append_list(conn: &mut Client) -> AppResult<ContentList<String>> {
+        let mut list = ContentList::new();
+        list.list.push("Current Playlist".to_string());
+        for item in Self::get_playlist(conn)? {
+            list.list.push(item.to_string());
+        }
+
+        Ok(list)
+    }
+
     pub fn update_playlist(&mut self) -> AppResult<()> {
         Self::get_playlist(&mut self.conn.conn)?;
         Ok(())
@@ -105,21 +122,9 @@ impl App {
     }
 
     pub fn search_song(&mut self) -> AppResult<()> {
-        let list = self
-            .conn
-            .songs_filenames
-            .iter()
-            .map(|f| f.as_str())
-            .collect::<Vec<&str>>();
-        let (filename, _) =
-            rust_fuzzy_search::fuzzy_search_sorted(self.search_input.as_str(), &list)
-                .get(0)
-                .unwrap()
-                .clone();
-
-        let song = self.conn.get_song_with_only_filename(filename);
+        let filename = self.conn.get_full_path(&self.search_input)?;
+        let song = self.conn.get_song_with_only_filename(&filename);
         self.conn.push(&song)?;
-
         Ok(())
     }
 

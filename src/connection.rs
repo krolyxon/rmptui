@@ -4,6 +4,8 @@ use simple_dmenu::dmenu;
 use std::process::Command;
 use std::time::Duration;
 
+use crate::app::AppResult;
+
 pub type Result<T> = core::result::Result<T, Error>;
 pub type Error = Box<dyn std::error::Error>;
 
@@ -143,6 +145,12 @@ impl Connection {
         Ok(())
     }
 
+    /// Add given song to playlist
+    pub fn add_to_playlist(&mut self, playlist: &str, song: &Song) -> Result<()> {
+        self.conn.pl_push(playlist, song)?;
+        Ok(())
+    }
+
     /// Given a filename, get instance of Song with only filename
     pub fn get_song_with_only_filename(&self, filename: &str) -> Song {
         Song {
@@ -156,6 +164,21 @@ impl Connection {
             range: None,
             tags: vec![("".to_string(), "".to_string())],
         }
+    }
+
+    /// Given a song name from a directory, it returns the full path of the song in the database
+    pub fn get_full_path(&self, short_path: &str) -> AppResult<String> {
+        let list = self
+            .songs_filenames
+            .iter()
+            .map(|f| f.as_str())
+            .collect::<Vec<&str>>();
+        let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&short_path, &list)
+            .get(0)
+            .unwrap()
+            .clone();
+
+        Ok(filename.to_string())
     }
 
     /// Print status to stdout

@@ -6,7 +6,6 @@ use crate::{
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rust_fuzzy_search::{self, fuzzy_search_sorted};
-use simple_dmenu::dmenu;
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     if app.inputmode == InputMode::Editing {
@@ -68,6 +67,52 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.move_cursor_right();
             }
 
+            _ => {}
+        }
+    } else if app.playlist_popup {
+        match key_event.code {
+            KeyCode::Char('q') | KeyCode::Esc => {
+                app.playlist_popup = false;
+            }
+
+            KeyCode::Char('j') | KeyCode::Down => app.append_list.next(),
+            KeyCode::Char('k') | KeyCode::Up => app.append_list.prev(),
+
+            KeyCode::Enter => {
+                let pl_index = app.append_list.index;
+                let pl_name = app.append_list.list.get(pl_index).unwrap();
+
+                let s_index: usize;
+                let mut short_path: String = String::new();
+                match app.selected_tab {
+                    SelectedTab::Queue => {
+                        s_index = app.queue_list.index;
+                        short_path = app.queue_list.list.get(s_index).unwrap().to_string();
+                    }
+
+                    SelectedTab::DirectoryBrowser => {
+                        let (t, f) = app.browser.filetree.get(app.browser.selected).unwrap();
+                        if t == "file" {
+                            short_path = f.to_string();
+                        }
+                    }
+                    _ => {}
+                }
+
+                let full_path = app.conn.get_full_path(&short_path)?;
+                let song = app.conn.get_song_with_only_filename(&full_path);
+
+                if pl_name == "Current Playlist" {
+                    app.conn.conn.push(&song)?;
+                    app.update_queue();
+                } else {
+                    app.conn.add_to_playlist(pl_name, &song)?;
+                }
+
+                // hide the playlist popup
+                app.playlist_popup = false;
+                app.append_list.index = 0;
+            }
             _ => {}
         }
     } else {
@@ -160,32 +205,34 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // add to queue
             KeyCode::Char('a') => {
-                let list = app
-                    .conn
-                    .songs_filenames
-                    .iter()
-                    .map(|f| f.as_str())
-                    .collect::<Vec<&str>>();
+                // let list = app
+                //     .conn
+                //     .songs_filenames
+                //     .iter()
+                //     .map(|f| f.as_str())
+                //     .collect::<Vec<&str>>();
+                //
+                // let files: Vec<String> = app
+                //     .browser
+                //     .filetree
+                //     .clone()
+                //     .into_iter()
+                //     .map(|(_, f)| f)
+                //     .collect();
+                //
+                // let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(
+                //     &files.get(app.browser.selected).unwrap(),
+                //     &list,
+                // )
+                // .get(0)
+                // .unwrap()
+                // .clone();
+                //
+                // let song = app.conn.get_song_with_only_filename(filename);
+                //
+                // app.conn.conn.push(&song)?;
 
-                let files: Vec<String> = app
-                    .browser
-                    .filetree
-                    .clone()
-                    .into_iter()
-                    .map(|(_, f)| f)
-                    .collect();
-
-                let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(
-                    &files.get(app.browser.selected).unwrap(),
-                    &list,
-                )
-                .get(0)
-                .unwrap()
-                .clone();
-
-                let song = app.conn.get_song_with_only_filename(filename);
-
-                app.conn.conn.push(&song)?;
+                app.playlist_popup = true;
             }
 
             KeyCode::Right => {
