@@ -177,14 +177,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Playback controls
             // Toggle Pause
-            KeyCode::Char('p') => {
-                app.conn.toggle_pause();
-            }
+            KeyCode::Char('p') => app.conn.toggle_pause(),
 
             // Pause
-            KeyCode::Char('s') => {
-                app.conn.pause();
-            }
+            KeyCode::Char('s') => app.conn.pause(),
 
             // Toggle rpeat
             KeyCode::Char('r') => {
@@ -199,41 +195,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
 
             // Dmenu prompt
-            KeyCode::Char('D') => {
-                app.conn.play_dmenu()?;
-            }
+            KeyCode::Char('D') => app.conn.play_dmenu()?,
 
             // add to queue
-            KeyCode::Char('a') => {
-                // let list = app
-                //     .conn
-                //     .songs_filenames
-                //     .iter()
-                //     .map(|f| f.as_str())
-                //     .collect::<Vec<&str>>();
-                //
-                // let files: Vec<String> = app
-                //     .browser
-                //     .filetree
-                //     .clone()
-                //     .into_iter()
-                //     .map(|(_, f)| f)
-                //     .collect();
-                //
-                // let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(
-                //     &files.get(app.browser.selected).unwrap(),
-                //     &list,
-                // )
-                // .get(0)
-                // .unwrap()
-                // .clone();
-                //
-                // let song = app.conn.get_song_with_only_filename(filename);
-                //
-                // app.conn.conn.push(&song)?;
-
-                app.playlist_popup = true;
-            }
+            KeyCode::Char('a') => app.playlist_popup = true,
 
             KeyCode::Right => {
                 app.conn

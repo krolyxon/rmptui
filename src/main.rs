@@ -11,6 +11,7 @@ use rmptui::event::EventHandler;
 use rmptui::handler;
 use rmptui::song::RSong;
 use rmptui::tui;
+use std::env;
 use std::io;
 
 use crossterm::event::{self, KeyCode, KeyEvent, KeyEventKind};
@@ -25,7 +26,9 @@ pub type Error = Box<dyn std::error::Error>;
 
 fn main() -> AppResult<()> {
     let args = Args::parse();
-    let mut app = App::builder("127.0.0.1:6600")?;
+    let env_host = env::var("MPD_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let env_port  = env::var("MPD_PORT").unwrap_or_else(|_| "6600".to_string());
+    let mut app = App::builder(format!("{}:{}", env_host, env_port).as_str())?;
 
     if !args.tui {
         handle_tui(&mut app)?;
