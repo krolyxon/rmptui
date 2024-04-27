@@ -113,6 +113,30 @@ impl App {
         Ok(())
     }
 
+    pub fn remove_from_current_playlist(&mut self) {
+        let mut file = String::new();
+        match self.selected_tab {
+            SelectedTab::DirectoryBrowser => {
+                let (_, f) = self.browser.filetree.get(self.browser.selected).unwrap();
+                file.push_str(f);
+            }
+
+            SelectedTab::Queue => {
+                file = self.queue_list.list.get(self.queue_list.index).unwrap().to_string();
+            }
+
+            _ => {}
+        }
+
+        for (i, song) in self.queue_list.list.clone().iter().enumerate() {
+            if song.contains(&file) {
+                self.conn.conn.delete(i as u32).unwrap();
+            }
+        }
+
+        self.update_queue();
+    }
+
     pub fn cycle_tabls(&mut self) {
         self.selected_tab = match self.selected_tab {
             SelectedTab::DirectoryBrowser => SelectedTab::Queue,

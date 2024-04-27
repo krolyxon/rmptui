@@ -284,6 +284,11 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.inputmode = InputMode::toggle_editing_states(&app.inputmode);
             }
 
+            // Remove from Current Playlsit
+            KeyCode::Backspace => {
+                app.remove_from_current_playlist();
+            }
+
             _ => {}
         }
     }
