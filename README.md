@@ -20,6 +20,7 @@ A MPD client in Rust
 - `3` to go to playlists view
 - `Enter` to add song/playlist to current playlist
 - `a` to append the song to current playing queue
+- `BackSpace` to delete the highlighted song from queue
 - `f` to go forwards
 - `b` to go backwards
 - `>` to play next song from queue
@@ -32,7 +33,8 @@ A MPD client in Rust
 ### TODO
 - [x] fix performance issues
 - [ ] improvements on queue control
-- [ ] add to playlists, playlists view
+- [x] add to playlists
+- [ ] view playlist
 - [x] search for songs
 - [ ] metadata based tree view
 - [x] Humantime format
