@@ -34,10 +34,10 @@ A MPD client in Rust
 
 ### TODO
 - [x] fix performance issues
-- [ ] improvements on queue control
+- [x] improvements on queue control
 - [x] add to playlists
+- [x] search for songs
+- [x] Humantime format
 - [ ] view playlist
 - [ ] change playlist name
-- [x] search for songs
 - [ ] metadata based tree view
-- [x] Humantime format

@@ -1,8 +1,4 @@
-use crate::{
-    app::{App, AppResult},
-    connection::Connection,
-    song::RSong,
-};
+use crate::{app::AppResult, connection::Connection, song::RSong};
 
 #[derive(Debug)]
 pub struct FileBrowser {
@@ -75,8 +71,6 @@ impl FileBrowser {
             self.selected -= 1;
         }
     }
-
-
 
     pub fn handle_go_back(&mut self, conn: &mut Connection) -> AppResult<()> {
         if self.prev_path != "." {

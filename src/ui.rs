@@ -1,5 +1,4 @@
 use crate::app::{App, SelectedTab};
-use clap::builder::styling::RgbColor;
 use ratatui::{
     prelude::*,
     widgets::{block::Title, *},

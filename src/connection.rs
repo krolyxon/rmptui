@@ -28,7 +28,7 @@ impl Connection {
         let mut conn = Client::connect(addrs).unwrap();
 
         let empty_song = Song {
-            file: "No Song in the Queue".to_string(),
+            file: "No Song  playing or in Queue".to_string(),
             artist: None,
             title: None,
             duration: None,
@@ -52,7 +52,10 @@ impl Connection {
         let repeat = status.repeat;
         let random = status.random;
 
-        let current_song = conn.currentsong().unwrap_or_else(|_| Some(empty_song.clone())).unwrap_or_else(|| empty_song);
+        let current_song = conn
+            .currentsong()
+            .unwrap_or_else(|_| Some(empty_song.clone()))
+            .unwrap_or_else(|| empty_song);
         Ok(Self {
             conn,
             songs_filenames,
@@ -93,8 +96,12 @@ impl Connection {
     /// Update status
     pub fn update_status(&mut self) {
         let status = self.conn.status().unwrap();
-        let empty_song = self.get_song_with_only_filename("No Song in the Queue");
-        let current_song = self.conn.currentsong().unwrap_or_else(|_| Some(empty_song.clone())).unwrap_or_else(|| empty_song);
+        let empty_song = self.get_song_with_only_filename("No Song  playing or in Queue");
+        let current_song = self
+            .conn
+            .currentsong()
+            .unwrap_or_else(|_| Some(empty_song.clone()))
+            .unwrap_or_else(|| empty_song);
 
         // Playback State
         match status.state {
