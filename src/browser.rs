@@ -1,4 +1,4 @@
-use crate::{app::AppResult, connection::Connection, song::RSong};
+use crate::{app::AppResult, connection::Connection};
 
 #[derive(Debug)]
 pub struct FileBrowser {
@@ -7,8 +7,6 @@ pub struct FileBrowser {
     pub prev_selected: usize,
     pub path: String,
     pub prev_path: String,
-
-    pub rsongs: Vec<Option<RSong>>,
 }
 
 impl FileBrowser {
@@ -19,7 +17,6 @@ impl FileBrowser {
             prev_selected: 0,
             path: ".".to_string(),
             prev_path: ".".to_string(),
-            rsongs: Vec::new(),
         }
     }
 
@@ -33,21 +30,6 @@ impl FileBrowser {
             .collect::<Vec<(String, String)>>();
 
         Ok(())
-    }
-
-    // read all songs into a vec of RSongs
-    pub fn get_all_rsongs(&mut self, conn: &mut Connection) -> AppResult<Vec<Option<RSong>>> {
-        for (t, s) in self.filetree.iter() {
-            if t == "file" {
-                let s = conn.get_full_path(s)?;
-                let s = RSong::new(&mut conn.conn, s);
-                self.rsongs.push(Some(s));
-            } else if t == "directory" {
-                self.rsongs.push(None)
-            }
-        }
-
-        Ok(self.rsongs.clone())
     }
 
     // Go to next item in filetree

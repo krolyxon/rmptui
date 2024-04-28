@@ -239,7 +239,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             KeyCode::Right => {
                 app.conn
-                    .push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
+                    .load_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
             }
 
             // Fast forward
