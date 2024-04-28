@@ -137,16 +137,16 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     _ => {}
                 }
 
-                let full_path = app.conn.get_full_path(&short_path)?;
-                let song = app.conn.get_song_with_only_filename(&full_path);
+                if let Some(full_path) = app.conn.get_full_path(&short_path) {
+                    let song = app.conn.get_song_with_only_filename(&full_path);
 
-                if pl_name == "Current Playlist" {
-                    app.conn.conn.push(&song)?;
-                    app.update_queue();
-                } else {
-                    app.conn.add_to_playlist(pl_name, &song)?;
+                    if pl_name == "Current Playlist" {
+                        app.conn.conn.push(&song)?;
+                        app.update_queue();
+                    } else {
+                        app.conn.add_to_playlist(pl_name, &song)?;
+                    }
                 }
-
                 // hide the playlist popup
                 app.playlist_popup = false;
                 app.append_list.index = 0;
@@ -156,7 +156,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     } else {
         match key_event.code {
             // Quit
-            KeyCode::Char('q')  => app.quit(),
+            KeyCode::Char('q') => app.quit(),
             KeyCode::Char('c') | KeyCode::Char('C') => {
                 if key_event.modifiers == KeyModifiers::CONTROL {
                     app.quit();
@@ -236,7 +236,6 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // add to queue
             KeyCode::Char('a') => app.playlist_popup = true,
-
 
             // Fast forward
             KeyCode::Char('f') => {
@@ -319,7 +318,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Remove from Current Playlsit
             KeyCode::Char(' ') | KeyCode::Backspace => {
-                app.handle_remove_or_from_current_playlist()?;
+                app.handle_add_or_remove_from_current_playlist()?;
             }
 
             // Change playlist name

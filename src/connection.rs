@@ -188,18 +188,26 @@ impl Connection {
     }
 
     /// Given a song name from a directory, it returns the full path of the song in the database
-    pub fn get_full_path(&self, short_path: &str) -> AppResult<String> {
-        let list = self
-            .songs_filenames
-            .iter()
-            .map(|f| f.as_str())
-            .collect::<Vec<&str>>();
-        let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&short_path, &list)
-            .get(0)
-            .unwrap()
-            .clone();
+    pub fn get_full_path(&self, short_path: &str) -> Option<String> {
+        // let list = self
+        //     .songs_filenames
+        //     .iter()
+        //     .map(|f| f.as_str())
+        //     .collect::<Vec<&str>>();
+        // let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&short_path, &list)
+        //     .get(0)
+        //     .unwrap()
+        //     .clone();
 
-        Ok(filename.to_string())
+        for (i, f) in self.songs_filenames.iter().enumerate() {
+            if f.contains(short_path) {
+                return Some(self.songs_filenames.get(i).unwrap().to_string());
+            }
+        }
+
+        None
+
+        // Ok(filename.to_string())
     }
 
     /// Print status to stdout

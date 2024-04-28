@@ -113,11 +113,11 @@ impl App {
         Ok(())
     }
 
-    pub fn handle_remove_or_from_current_playlist(&mut self) -> AppResult<()> {
+    pub fn handle_add_or_remove_from_current_playlist(&mut self) -> AppResult<()> {
         match self.selected_tab {
             SelectedTab::DirectoryBrowser => {
                 let (_, file) = self.browser.filetree.get(self.browser.selected).unwrap();
-                self.browser.selected += 1;
+
                 let mut status = false;
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
                     if song.contains(file) {
@@ -127,14 +127,21 @@ impl App {
                 }
 
                 if !status {
-                    let song = self
-                        .conn
-                        .get_song_with_only_filename(&self.conn.get_full_path(&file).unwrap());
-                    self.conn.conn.push(&song)?;
+                    if let Some(full_path) = &self.conn.get_full_path(&file) {
+                        let song = self.conn.get_song_with_only_filename(full_path);
+                        self.conn.conn.push(&song)?;
+                    }
+                }
+
+                if self.browser.selected != self.browser.filetree.len() - 1 {
+                    self.browser.selected += 1;
                 }
             }
 
             SelectedTab::Queue => {
+                if self.queue_list.list.len() == 0 {
+                    return Ok(());
+                }
                 let file = self
                     .queue_list
                     .list
@@ -145,6 +152,9 @@ impl App {
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
                     if song.contains(&file) {
                         self.conn.conn.delete(i as u32).unwrap();
+                        if self.queue_list.index != 0 {
+                            self.queue_list.index -= 1;
+                        }
                     }
                 }
             }
@@ -205,9 +215,10 @@ impl App {
     }
 
     pub fn search_song(&mut self) -> AppResult<()> {
-        let filename = self.conn.get_full_path(&self.search_input)?;
-        let song = self.conn.get_song_with_only_filename(&filename);
-        self.conn.push(&song)?;
+        if let Some(filename) = self.conn.get_full_path(&self.search_input) {
+            let song = self.conn.get_song_with_only_filename(&filename);
+            self.conn.push(&song)?;
+        }
         Ok(())
     }
 
