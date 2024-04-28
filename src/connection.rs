@@ -4,8 +4,6 @@ use simple_dmenu::dmenu;
 use std::process::Command;
 use std::time::Duration;
 
-use crate::app::AppResult;
-
 pub type Result<T> = core::result::Result<T, Error>;
 pub type Error = Box<dyn std::error::Error>;
 

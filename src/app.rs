@@ -152,7 +152,7 @@ impl App {
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
                     if song.contains(&file) {
                         self.conn.conn.delete(i as u32).unwrap();
-                        if self.queue_list.index != 0 {
+                        if self.queue_list.index == self.queue_list.list.len() - 1 && self.queue_list.index != 0 {
                             self.queue_list.index -= 1;
                         }
                     }
