@@ -19,24 +19,40 @@ pub struct Connection {
     pub volume: u8,
     pub repeat: bool,
     pub random: bool,
+    pub current_song: Song,
 }
 
 impl Connection {
     /// Create a new connection
     pub fn new(addrs: &str) -> Result<Self> {
         let mut conn = Client::connect(addrs).unwrap();
+
+        let empty_song = Song {
+            file: "No Song in the Queue".to_string(),
+            artist: None,
+            title: None,
+            duration: None,
+            last_mod: None,
+            name: None,
+            place: None,
+            range: None,
+            tags: vec![("".to_string(), "".to_string())],
+        };
+
         let songs_filenames: Vec<String> = conn
             .listall()
             .unwrap()
             .into_iter()
             .map(|x| x.file)
             .collect();
+
         let status = conn.status().unwrap();
         let (elapsed, total) = status.time.unwrap_or_default();
         let volume: u8 = status.volume as u8;
         let repeat = status.repeat;
         let random = status.random;
 
+        let current_song = conn.currentsong().unwrap_or_else(|_| Some(empty_song.clone())).unwrap_or_else(|| empty_song);
         Ok(Self {
             conn,
             songs_filenames,
@@ -46,6 +62,7 @@ impl Connection {
             volume,
             repeat,
             random,
+            current_song,
         })
     }
 
@@ -76,6 +93,8 @@ impl Connection {
     /// Update status
     pub fn update_status(&mut self) {
         let status = self.conn.status().unwrap();
+        let empty_song = self.get_song_with_only_filename("No Song in the Queue");
+        let current_song = self.conn.currentsong().unwrap_or_else(|_| Some(empty_song.clone())).unwrap_or_else(|| empty_song);
 
         // Playback State
         match status.state {
@@ -97,6 +116,8 @@ impl Connection {
 
         // Random mode
         self.random = status.random;
+
+        self.current_song = current_song;
     }
 
     /// Get progress ratio of current playing song
@@ -200,15 +221,14 @@ impl Connection {
 
     /// Gives title of current playing song
     pub fn now_playing(&mut self) -> Result<Option<String>> {
-        let song = self.conn.currentsong()?.unwrap_or_default();
-        if let Some(s) = song.title {
-            if let Some(a) = song.artist {
+        if let Some(s) = &self.current_song.title {
+            if let Some(a) = &self.current_song.artist {
                 return Ok(Some(format!("\"{}\" By {}", s, a)));
             } else {
-                return Ok(Some(s));
+                return Ok(Some(s.to_string()));
             }
         } else {
-            return Ok(Some(song.file));
+            return Ok(Some(self.current_song.file.clone()));
         }
     }
 

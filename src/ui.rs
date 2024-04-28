@@ -1,4 +1,5 @@
 use crate::app::{App, SelectedTab};
+use clap::builder::styling::RgbColor;
 use ratatui::{
     prelude::*,
     widgets::{block::Title, *},
@@ -51,12 +52,25 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
     let mut song_state = ListState::default();
     let total_songs = app.conn.conn.stats().unwrap().songs.to_string();
-    let mut list: Vec<String> = vec![];
+    let mut list: Vec<ListItem> = vec![];
     for (t, s) in app.browser.filetree.iter() {
         if t == "file" {
-            list.push(s.to_string());
+            let mut status: bool = false;
+            for sn in app.queue_list.list.iter() {
+                if sn.contains(s) {
+                    status = true;
+                }
+            }
+            if status {
+                list.push(ListItem::new(s.clone().bold()));
+            } else {
+                list.push(ListItem::new(Line::styled(s, Style::default())));
+            }
         } else {
-            list.push(format!("[{}]", *s));
+            list.push(ListItem::new(Line::styled(
+                format!("[{}]", *s),
+                Style::default(),
+            )));
         }
     }
     let list = List::new(list)
@@ -97,7 +111,16 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
             Title::from(format!("Volume: {}%", app.conn.volume).bold().green())
                 .alignment(Alignment::Right),
         );
-    let list = List::new(app.queue_list.list.clone())
+
+    let mut items: Vec<ListItem> = vec![];
+    for item in app.queue_list.list.iter() {
+        if item.contains(&app.conn.current_song.file) {
+            items.push(ListItem::new(item.clone().bold()))
+        } else {
+            items.push(ListItem::new(item.clone()));
+        }
+    }
+    let list = List::new(items)
         .block(title.borders(Borders::ALL))
         .highlight_style(
             Style::new()
