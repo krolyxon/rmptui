@@ -183,7 +183,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             },
 
             // Next directory
-            KeyCode::Enter | KeyCode::Char('l') => {
+            KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => {
                 // app.update_queue();
 
                 match app.selected_tab {
@@ -204,7 +204,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
 
             // head back to previous directory
-            KeyCode::Char('h') => match app.selected_tab {
+            KeyCode::Char('h') | KeyCode::Left => match app.selected_tab {
                 SelectedTab::DirectoryBrowser => {
                     app.browser.handle_go_back(&mut app.conn)?;
                 }
@@ -237,10 +237,6 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             // add to queue
             KeyCode::Char('a') => app.playlist_popup = true,
 
-            KeyCode::Right => {
-                app.conn
-                    .load_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
-            }
 
             // Fast forward
             KeyCode::Char('f') => {
@@ -265,12 +261,12 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Directory browser tab
             KeyCode::Char('1') => {
-                app.selected_tab = SelectedTab::DirectoryBrowser;
+                app.selected_tab = SelectedTab::Queue;
             }
 
             // Playing queue tab
             KeyCode::Char('2') => {
-                app.selected_tab = SelectedTab::Queue;
+                app.selected_tab = SelectedTab::DirectoryBrowser;
             }
 
             // Playlists tab

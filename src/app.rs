@@ -52,7 +52,7 @@ impl App {
             conn,
             queue_list,
             pl_list,
-            selected_tab: SelectedTab::DirectoryBrowser,
+            selected_tab: SelectedTab::Queue,
             browser,
             inputmode: InputMode::Normal,
             search_input: String::new(),
@@ -158,9 +158,9 @@ impl App {
 
     pub fn cycle_tabls(&mut self) {
         self.selected_tab = match self.selected_tab {
-            SelectedTab::DirectoryBrowser => SelectedTab::Queue,
-            SelectedTab::Queue => SelectedTab::Playlists,
-            SelectedTab::Playlists => SelectedTab::DirectoryBrowser,
+            SelectedTab::Queue => SelectedTab::DirectoryBrowser,
+            SelectedTab::DirectoryBrowser => SelectedTab::Playlists,
+            SelectedTab::Playlists => SelectedTab::Queue,
         };
     }
 

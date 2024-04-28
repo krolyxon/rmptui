@@ -10,15 +10,15 @@ A MPD client in Rust
 - `+` to increase volume
 - `-` to decrease volume
 - `D` to get dmenu prompt
-- `j` to scroll down
-- `k` to scroll up
-- `l` add song to playlist or go inside the directory
-- `h` to go back to previous directory
+- `j` OR `Down` to scroll down
+- `k` OR `Up` to scroll up
+- `l` OR `Right` add song to playlist or go inside the directory
+- `h` OR `Left` to go back to previous directory
 - `Tab` to cycle through tabs
-- `1` to go to directory tree
-- `2` to go to current playing queue
+- `1` to go to queue
+- `2` to go to directory browser
 - `3` to go to playlists view
-- `Enter` to add song/playlist to current playlist
+- `Enter` OR `l` OR `Right` to add song/playlist to current playlist
 - `a` to append the song to current playing queue
 - `Space`/`BackSpace` to delete the highlighted song from queue
 - `f` to go forwards
