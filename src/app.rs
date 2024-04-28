@@ -120,6 +120,7 @@ impl App {
             SelectedTab::DirectoryBrowser => {
                 let (_, f) = self.browser.filetree.get(self.browser.selected).unwrap();
                 file.push_str(f);
+                self.browser.selected += 1;
             }
 
             SelectedTab::Queue => {
