@@ -109,7 +109,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         }
     } else if app.playlist_popup {
         match key_event.code {
-            KeyCode::Char('q') => {
+            KeyCode::Char('q') | KeyCode::Esc => {
                 app.playlist_popup = false;
             }
 
@@ -156,7 +156,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     } else {
         match key_event.code {
             // Quit
-            KeyCode::Char('q') | KeyCode::Esc => app.quit(),
+            KeyCode::Char('q'),
             KeyCode::Char('c') | KeyCode::Char('C') => {
                 if key_event.modifiers == KeyModifiers::CONTROL {
                     app.quit();
