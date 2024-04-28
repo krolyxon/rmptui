@@ -106,6 +106,7 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
     let mut queue_state = ListState::default();
     let title = Block::default()
         .title(Title::from("Play Queue".green().bold()))
+        .title(Title::from(format!("({} items)", app.queue_list.list.len()).bold()))
         .title(
             Title::from(format!("Volume: {}%", app.conn.volume).bold().green())
                 .alignment(Alignment::Right),

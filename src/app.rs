@@ -65,7 +65,6 @@ impl App {
     pub fn tick(&mut self) {
         self.conn.update_status();
         self.update_queue();
-        // self.browser.update_directory(&mut self.conn).unwrap();
     }
 
     pub fn quit(&mut self) {
