@@ -109,7 +109,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         }
     } else if app.playlist_popup {
         match key_event.code {
-            KeyCode::Char('q') | KeyCode::Esc => {
+            KeyCode::Char('q') => {
                 app.playlist_popup = false;
             }
 
