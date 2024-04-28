@@ -46,6 +46,7 @@ impl App {
         Self::get_queue(&mut conn, &mut queue_list.list);
 
         let browser = FileBrowser::new();
+
         Ok(Self {
             running: true,
             conn,
@@ -122,7 +123,12 @@ impl App {
             }
 
             SelectedTab::Queue => {
-                file = self.queue_list.list.get(self.queue_list.index).unwrap().to_string();
+                file = self
+                    .queue_list
+                    .list
+                    .get(self.queue_list.index)
+                    .unwrap()
+                    .to_string();
             }
 
             _ => {}
@@ -143,6 +149,47 @@ impl App {
             SelectedTab::Queue => SelectedTab::Playlists,
             SelectedTab::Playlists => SelectedTab::DirectoryBrowser,
         };
+    }
+
+    pub fn handle_enter(&mut self) -> AppResult<()> {
+        let browser = &mut self.browser;
+        let (t, path) = browser.filetree.get(browser.selected).unwrap();
+        if t == "directory" {
+            if path != "." {
+                browser.prev_path = browser.path.clone();
+                browser.path = browser.prev_path.clone() + "/" + path;
+                browser.update_directory(&mut self.conn)?;
+                // self.get_all_rsongs(conn)?;
+                browser.prev_selected = browser.selected;
+                browser.selected = 0;
+            }
+        } else {
+            // let list = conn
+            //     .songs_filenames
+            //     .iter()
+            //     .map(|f| f.as_str())
+            //     .collect::<Vec<&str>>();
+            // let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&path, &list)
+            //     .get(0)
+            //     .unwrap()
+            //     .clone();
+            let index = self.queue_list.list.iter().position(|x| x.contains(path));
+
+            if index.is_some() {
+                self.conn.conn.switch(index.unwrap() as u32)?;
+            } else {
+                for filename in self.conn.songs_filenames.clone().iter() {
+                    if filename.contains(path) {
+                        let song = self.conn.get_song_with_only_filename(filename);
+                        self.conn.push(&song)?;
+                    }
+                }
+
+                // updating queue, to avoid multiple pushes of the same songs if we enter multiple times before the queue gets updated
+                self.update_queue();
+            }
+        }
+        Ok(())
     }
 
     pub fn search_song(&mut self) -> AppResult<()> {

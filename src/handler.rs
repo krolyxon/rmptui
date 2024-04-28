@@ -9,20 +9,58 @@ use rust_fuzzy_search::{self, fuzzy_search_sorted};
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     if app.inputmode == InputMode::Editing {
-        // Live update
-        let list: Vec<&str> = app
-            .browser
-            .filetree
-            .iter()
-            .map(|(_, f)| f.as_str())
-            .collect::<Vec<&str>>();
+        // Live search update
+        match app.selected_tab {
+            SelectedTab::DirectoryBrowser => {
+                let list: Vec<&str> = app
+                    .browser
+                    .filetree
+                    .iter()
+                    .map(|(_, f)| f.as_str())
+                    .collect::<Vec<&str>>();
 
-        let res: Vec<(&str, f32)> = fuzzy_search_sorted(&app.search_input, &list);
-        let res = res.iter().map(|(x, _)| *x).collect::<Vec<&str>>();
+                let res: Vec<(&str, f32)> = fuzzy_search_sorted(&app.search_input, &list);
+                let res = res.iter().map(|(x, _)| *x).collect::<Vec<&str>>();
 
-        for (i, (_, item)) in app.browser.filetree.iter().enumerate() {
-            if item.contains(res.get(0).unwrap()) {
-                app.browser.selected = i;
+                for (i, (_, item)) in app.browser.filetree.iter().enumerate() {
+                    if item.contains(res.get(0).unwrap()) {
+                        app.browser.selected = i;
+                    }
+                }
+            }
+
+            SelectedTab::Queue => {
+                let list: Vec<&str> = app
+                    .queue_list
+                    .list
+                    .iter()
+                    .map(|f| f.as_str())
+                    .collect::<Vec<&str>>();
+                let res: Vec<(&str, f32)> = fuzzy_search_sorted(&app.search_input, &list);
+                let res = res.iter().map(|(x, _)| *x).collect::<Vec<&str>>();
+
+                for (i, item) in app.queue_list.list.iter().enumerate() {
+                    if item.contains(res.get(0).unwrap()) {
+                        app.queue_list.index = i;
+                    }
+                }
+            }
+
+            SelectedTab::Playlists => {
+                let list: Vec<&str> = app
+                    .pl_list
+                    .list
+                    .iter()
+                    .map(|f| f.as_str())
+                    .collect::<Vec<&str>>();
+                let res: Vec<(&str, f32)> = fuzzy_search_sorted(&app.search_input, &list);
+                let res = res.iter().map(|(x, _)| *x).collect::<Vec<&str>>();
+
+                for (i, item) in app.pl_list.list.iter().enumerate() {
+                    if item.contains(res.get(0).unwrap()) {
+                        app.pl_list.index = i;
+                    }
+                }
             }
         }
 
@@ -126,6 +164,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     app.conn.conn.clear()?;
                     app.conn.update_status();
                     app.queue_list.list.clear();
+                    app.queue_list.reset_index();
                 }
             }
 
@@ -149,15 +188,13 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
                 match app.selected_tab {
                     SelectedTab::DirectoryBrowser => {
-                        app.browser.handle_enter(&mut app.conn)?;
+                        app.handle_enter()?;
                     }
 
                     SelectedTab::Queue => {
-                        let song = app.conn.get_song_with_only_filename(
-                            app.queue_list.list.get(app.queue_list.index).unwrap(),
-                        );
-                        app.conn.push(&song)?;
+                        app.conn.conn.switch(app.queue_list.index as u32)?;
                     }
+
                     SelectedTab::Playlists => {
                         app.conn
                             .push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
@@ -285,9 +322,12 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
 
             // Remove from Current Playlsit
-            KeyCode::Backspace => {
+            KeyCode::Char(' ') | KeyCode::Backspace => {
                 app.remove_from_current_playlist();
             }
+
+            // Change playlist name
+            KeyCode::Char('e') => if app.selected_tab == SelectedTab::Playlists {},
 
             _ => {}
         }

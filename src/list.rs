@@ -39,4 +39,8 @@ impl<T> ContentList<T> {
             self.index -= 1;
         }
     }
+
+    pub fn reset_index(&mut self) {
+        self.index = 0;
+    }
 }
