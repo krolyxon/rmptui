@@ -9,7 +9,6 @@ use rmptui::connection::Connection;
 use rmptui::event::Event;
 use rmptui::event::EventHandler;
 use rmptui::handler;
-use rmptui::song::RSong;
 use rmptui::tui;
 use std::env;
 use std::io;
