@@ -323,7 +323,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Remove from Current Playlsit
             KeyCode::Char(' ') | KeyCode::Backspace => {
-                app.remove_from_current_playlist();
+                app.handle_remove_or_from_current_playlist()?;
             }
 
             // Change playlist name

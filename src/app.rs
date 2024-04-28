@@ -114,34 +114,47 @@ impl App {
         Ok(())
     }
 
-    pub fn remove_from_current_playlist(&mut self) {
-        let mut file = String::new();
+    pub fn handle_remove_or_from_current_playlist(&mut self) -> AppResult<()> {
         match self.selected_tab {
             SelectedTab::DirectoryBrowser => {
-                let (_, f) = self.browser.filetree.get(self.browser.selected).unwrap();
-                file.push_str(f);
+                let (_, file) = self.browser.filetree.get(self.browser.selected).unwrap();
                 self.browser.selected += 1;
+                let mut status = false;
+                for (i, song) in self.queue_list.list.clone().iter().enumerate() {
+                    if song.contains(file) {
+                        self.conn.conn.delete(i as u32).unwrap();
+                        status = true;
+                    }
+                }
+
+                if !status {
+                    let song = self
+                        .conn
+                        .get_song_with_only_filename(&self.conn.get_full_path(&file).unwrap());
+                    self.conn.conn.push(&song)?;
+                }
             }
 
             SelectedTab::Queue => {
-                file = self
+                let file = self
                     .queue_list
                     .list
                     .get(self.queue_list.index)
                     .unwrap()
                     .to_string();
+
+                for (i, song) in self.queue_list.list.clone().iter().enumerate() {
+                    if song.contains(&file) {
+                        self.conn.conn.delete(i as u32).unwrap();
+                    }
+                }
             }
 
             _ => {}
         }
 
-        for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-            if song.contains(&file) {
-                self.conn.conn.delete(i as u32).unwrap();
-            }
-        }
-
         self.update_queue();
+        Ok(())
     }
 
     pub fn cycle_tabls(&mut self) {

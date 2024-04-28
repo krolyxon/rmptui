@@ -62,9 +62,9 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
                 }
             }
             if status {
-                list.push(ListItem::new(s.clone().bold()));
+                list.push(ListItem::new(s.clone().magenta().bold()));
             } else {
-                list.push(ListItem::new(Line::styled(s, Style::default())));
+                list.push(ListItem::new(s.clone()));
             }
         } else {
             list.push(ListItem::new(Line::styled(
@@ -115,7 +115,7 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
     let mut items: Vec<ListItem> = vec![];
     for item in app.queue_list.list.iter() {
         if item.contains(&app.conn.current_song.file) {
-            items.push(ListItem::new(item.clone().bold()))
+            items.push(ListItem::new(item.clone().magenta().bold()))
         } else {
             items.push(ListItem::new(item.clone()));
         }
