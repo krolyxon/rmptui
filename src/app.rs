@@ -160,7 +160,6 @@ impl App {
                 browser.prev_path = browser.path.clone();
                 browser.path = browser.prev_path.clone() + "/" + path;
                 browser.update_directory(&mut self.conn)?;
-                // self.get_all_rsongs(conn)?;
                 browser.prev_selected = browser.selected;
                 browser.selected = 0;
             }
