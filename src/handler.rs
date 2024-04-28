@@ -197,7 +197,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
                     SelectedTab::Playlists => {
                         app.conn
-                            .push_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
+                            .load_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
                     }
                 }
                 app.conn.update_status();
@@ -330,22 +330,20 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             KeyCode::Char('e') => if app.selected_tab == SelectedTab::Playlists {},
 
             // go to top of list
-            KeyCode::Char('g') => {
-                match app.selected_tab {
-                    SelectedTab::Queue => app.queue_list.index = 0,
-                    SelectedTab::DirectoryBrowser => app.browser.selected = 0,
-                    SelectedTab::Playlists => app.pl_list.index = 0
-                }
-            }
+            KeyCode::Char('g') => match app.selected_tab {
+                SelectedTab::Queue => app.queue_list.index = 0,
+                SelectedTab::DirectoryBrowser => app.browser.selected = 0,
+                SelectedTab::Playlists => app.pl_list.index = 0,
+            },
 
             // go to bottom of list
-            KeyCode::Char('G') => {
-                match app.selected_tab {
-                    SelectedTab::Queue => app.queue_list.index = app.queue_list.list.len() - 1,
-                    SelectedTab::DirectoryBrowser => app.browser.selected = app.browser.filetree.len() - 1,
-                    SelectedTab::Playlists => app.pl_list.index = app.pl_list.list.len() - 1
+            KeyCode::Char('G') => match app.selected_tab {
+                SelectedTab::Queue => app.queue_list.index = app.queue_list.list.len() - 1,
+                SelectedTab::DirectoryBrowser => {
+                    app.browser.selected = app.browser.filetree.len() - 1
                 }
-            }
+                SelectedTab::Playlists => app.pl_list.index = app.pl_list.list.len() - 1,
+            },
             _ => {}
         }
     }

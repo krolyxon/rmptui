@@ -160,16 +160,9 @@ impl Connection {
     }
 
     /// Push all songs of a playlist into queue
-    pub fn push_playlist(&mut self, playlist: &str) -> Result<()> {
-        let songs: Vec<Song> = self.conn.playlist(playlist)?;
-
-        for song in songs {
-            if self.songs_filenames.contains(&song.file) {
-                let song = self.get_song_with_only_filename(&song.file);
-                self.conn.push(&song)?;
-                self.conn.play()?;
-            }
-        }
+    pub fn load_playlist(&mut self, playlist: &str) -> Result<()> {
+        self.conn.load(playlist, ..)?;
+        self.conn.play()?;
         Ok(())
     }
 
