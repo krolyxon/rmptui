@@ -46,15 +46,23 @@ impl FileBrowser {
 
     pub fn update_directory(&mut self, conn: &mut Connection) -> AppResult<()> {
         self.filetree.clear();
-        self.filetree = conn
-            .conn
-            .listfiles(self.path.as_str())?
-            .into_iter()
-            .filter(|(f, l)| {
-                f == "directory"
-                    || f == "file" && Path::new(l).has_extension(&["mp3", "ogg", "flac", "m4a", "wav", "aac" ,"opus", "ape", "wma", "mpc", "aiff", "dff", "mp2", "mka"])
-            })
-            .collect::<Vec<(String, String)>>();
+        let mut file_vec: Vec<(String, String)> = vec![];
+        let mut dir_vec: Vec<(String, String)> = vec![];
+        for (t, f) in conn.conn.listfiles(self.path.as_str())?.into_iter() {
+            if t == "directory" {
+                dir_vec.push((t, f));
+            } else if t == "file"
+                && Path::new(&f).has_extension(&[
+                    "mp3", "ogg", "flac", "m4a", "wav", "aac", "opus", "ape", "wma", "mpc", "aiff",
+                    "dff", "mp2", "mka",
+                ])
+            {
+                file_vec.push((t, f));
+            }
+        }
+
+        dir_vec.extend(file_vec);
+        self.filetree = dir_vec;
 
         self.songs.clear();
         for (t, song) in self.filetree.iter() {
