@@ -275,12 +275,16 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Play next song
             KeyCode::Char('>') => {
-                app.conn.conn.next()?;
+                if !app.queue_list.list.is_empty() {
+                    app.conn.conn.next()?;
+                }
             }
 
             // Play previous song
             KeyCode::Char('<') => {
-                app.conn.conn.prev()?;
+                if !app.queue_list.list.is_empty() {
+                    app.conn.conn.prev()?;
+                }
             }
 
             // Volume controls
