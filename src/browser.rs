@@ -98,24 +98,27 @@ impl FileBrowser {
 
     // Go to next item in filetree
     pub fn next(&mut self) {
-        // if self.selected < self.filetree.len() - 1 {
-        //     self.selected += 1;
-        // }
-
-        if self.selected == self.filetree.len() - 1 {
-            self.selected = 0;
-        } else {
+        if self.selected < self.filetree.len() - 1 {
             self.selected += 1;
         }
+
+        // if self.selected == self.filetree.len() - 1 {
+        //     self.selected = 0;
+        // } else {
+        //     self.selected += 1;
+        // }
     }
 
     /// Go to previous item in filetree
     pub fn prev(&mut self) {
-        if self.selected == 0 {
-            self.selected = self.filetree.len() - 1;
-        } else {
+        if self.selected != 0 {
             self.selected -= 1;
         }
+        // if self.selected == 0 {
+        //     self.selected = self.filetree.len() - 1;
+        // } else {
+        //     self.selected -= 1;
+        // }
     }
 
     pub fn handle_go_back(&mut self, conn: &mut Connection) -> AppResult<()> {

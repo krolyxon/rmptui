@@ -38,6 +38,6 @@ A MPD client in Rust
 - [x] add to playlists
 - [x] search for songs
 - [x] Humantime format
+- [x] metadata based tree view
 - [ ] view playlist
 - [ ] change playlist name
-- [ ] metadata based tree view

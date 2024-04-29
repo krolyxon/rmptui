@@ -62,7 +62,6 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     }
                 }
             }
-
         }
 
         match key_event.code {
@@ -200,7 +199,6 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         app.conn
                             .load_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
                     }
-
                 }
                 app.conn.update_status();
             }
@@ -279,6 +277,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             KeyCode::Char('>') => {
                 if !app.queue_list.list.is_empty() {
                     app.conn.conn.next()?;
+                    app.update_queue();
                 }
             }
 
@@ -286,6 +285,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             KeyCode::Char('<') => {
                 if !app.queue_list.list.is_empty() {
                     app.conn.conn.prev()?;
+                    app.update_queue();
                 }
             }
 
