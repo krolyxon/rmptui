@@ -1,4 +1,5 @@
-use std::time::Duration;
+use crate::browser::FileExtension;
+use std::{path::Path, time::Duration};
 
 use crate::{
     app::{App, AppResult, SelectedTab},
@@ -118,35 +119,63 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             KeyCode::Enter => {
                 let pl_index = app.append_list.index;
-                let pl_name = app.append_list.list.get(pl_index).unwrap();
+                let pl_name = &app.append_list.list.get(pl_index).unwrap();
 
                 let s_index: usize;
-                let mut short_path: String = String::new();
                 match app.selected_tab {
                     SelectedTab::Queue => {
                         s_index = app.queue_list.index;
-                        short_path = app.queue_list.list.get(s_index).unwrap().to_string();
+                        let short_path = app.queue_list.list.get(s_index).unwrap().to_string();
+
+                        if let Some(full_path) = app.conn.get_full_path(&short_path) {
+                            let song = app.conn.get_song_with_only_filename(&full_path);
+
+                            if pl_name.to_string() == "Current Playlist" {
+                                app.conn.conn.push(&song)?;
+                                app.update_queue();
+                            } else {
+                                app.conn.add_to_playlist(pl_name, &song)?;
+                            }
+                        }
                     }
 
                     SelectedTab::DirectoryBrowser => {
                         let (t, f) = app.browser.filetree.get(app.browser.selected).unwrap();
                         if t == "file" {
-                            short_path = f.to_string();
+                            let short_path = f;
+                            if let Some(full_path) = app.conn.get_full_path(short_path) {
+                                let song = app.conn.get_song_with_only_filename(&full_path);
+
+                                if pl_name.to_string() == "Current Playlist" {
+                                    app.conn.conn.push(&song)?;
+                                    app.update_queue();
+                                } else {
+                                    app.conn.add_to_playlist(pl_name, &song)?;
+                                }
+                            }
+                        } else if t == "directory" {
+                            for (t, f) in app.conn.conn.listfiles(f)?.iter() {
+                                // dir_vec.push((t, f));
+                                if t == "file"
+                                    && Path::new(&f).has_extension(&[
+                                        "mp3", "ogg", "flac", "m4a", "wav", "aac", "opus", "ape",
+                                        "wma", "mpc", "aiff", "dff", "mp2", "mka",
+                                    ])
+                                {
+                                    let full_path = app.conn.get_full_path(&f).unwrap_or_default();
+                                    let song = app.conn.get_song_with_only_filename(&full_path);
+                                    if pl_name.to_string() == "Current Playlist" {
+                                        app.conn.conn.push(&song)?;
+                                    } else {
+                                        app.conn.add_to_playlist(pl_name, &song)?;
+                                    }
+                                }
+                            }
                         }
                     }
                     _ => {}
                 }
 
-                if let Some(full_path) = app.conn.get_full_path(&short_path) {
-                    let song = app.conn.get_song_with_only_filename(&full_path);
-
-                    if pl_name == "Current Playlist" {
-                        app.conn.conn.push(&song)?;
-                        app.update_queue();
-                    } else {
-                        app.conn.add_to_playlist(pl_name, &song)?;
-                    }
-                }
                 // hide the playlist popup
                 app.playlist_popup = false;
                 app.append_list.index = 0;
