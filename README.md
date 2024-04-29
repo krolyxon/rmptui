@@ -37,7 +37,7 @@ A MPD client in Rust
 - [x] improvements on queue control
 - [x] add to playlists
 - [x] search for songs
-- [x] Humantime format
+- [x] Human readable time format
 - [x] metadata based tree view
 - [ ] view playlist
 - [ ] change playlist name

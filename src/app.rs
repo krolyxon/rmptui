@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::browser::FileBrowser;
 use crate::connection::Connection;
 use crate::list::ContentList;
@@ -152,7 +154,9 @@ impl App {
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
                     if song.contains(&file) {
                         self.conn.conn.delete(i as u32).unwrap();
-                        if self.queue_list.index == self.queue_list.list.len() - 1 && self.queue_list.index != 0 {
+                        if self.queue_list.index == self.queue_list.list.len() - 1
+                            && self.queue_list.index != 0
+                        {
                             self.queue_list.index -= 1;
                         }
                     }
@@ -267,5 +271,18 @@ impl App {
 
     pub fn reset_cursor(&mut self) {
         self.cursor_position = 0;
+    }
+
+    /// Given time in seconds, convert it to hh:mm:ss
+    pub fn format_time(time: Duration) -> String {
+        let time = time.as_secs();
+        let h = time / 3600;
+        let m = (time % 3600) / 60;
+        let s = (time % 3600) % 60;
+        if h == 0 {
+            format!("{:02}:{:02}", m, s)
+        } else {
+            format!("{:02}:{:02}:{:02}", h, m, s)
+        }
     }
 }

@@ -77,9 +77,8 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
                 .collect::<Vec<String>>()
                 .join("");
 
-            let time = humantime::format_duration(
-                song.clone().duration.unwrap_or_else(|| Duration::new(0, 0)),
-            );
+            let time =
+                App::format_time(song.clone().duration.unwrap_or_else(|| Duration::new(0, 0)));
 
             let mut status: bool = false;
             for sn in app.queue_list.list.iter() {
@@ -188,9 +187,7 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
             .collect::<Vec<String>>()
             .join("");
 
-        let time = humantime::format_duration(
-            song.clone().duration.unwrap_or_else(|| Duration::new(0, 0)),
-        );
+        let time = App::format_time(song.clone().duration.unwrap_or_else(|| Duration::new(0, 0)));
 
         if s.contains(&app.conn.current_song.file) {
             let row = Row::new(vec![
@@ -353,8 +350,8 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
     let duration = if app.conn.total_duration.as_secs() != 0 {
         format!(
             "[{}/{}]",
-            humantime::format_duration(app.conn.elapsed),
-            humantime::format_duration(app.conn.total_duration)
+            App::format_time(app.conn.elapsed),
+            App::format_time(app.conn.total_duration)
         )
     } else {
         "".to_string()
