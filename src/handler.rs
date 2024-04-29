@@ -1,12 +1,11 @@
 use crate::browser::FileExtension;
-use std::{path::Path, time::Duration};
-
 use crate::{
     app::{App, AppResult, SelectedTab},
     ui::InputMode,
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rust_fuzzy_search::{self, fuzzy_search_sorted};
+use std::{path::Path, time::Duration};
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     if app.inputmode == InputMode::Editing {
@@ -65,6 +64,9 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
         }
 
+        // Keybind for searching
+        //
+        // Keybinds for when the search prompt is visible
         match key_event.code {
             KeyCode::Esc => {
                 app.inputmode = InputMode::Normal;
@@ -108,6 +110,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             _ => {}
         }
+
+    // Playlist popup keybinds
+    //
+    // Keybind for when the "append to playlist" popup is visible
     } else if app.playlist_popup {
         match key_event.code {
             KeyCode::Char('q') | KeyCode::Esc => {
@@ -183,6 +189,9 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             _ => {}
         }
     } else {
+        // Global keymaps
+        //
+        // Keymaps related to all the tabs
         match key_event.code {
             // Quit
             KeyCode::Char('q') => app.quit(),
@@ -343,7 +352,8 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Update MPD database
             KeyCode::Char('U') => {
-                app.conn.conn.update()?;
+                app.conn.conn.rescan()?;
+                app.browser.update_directory(&mut app.conn)?;
             }
 
             // Search for songs

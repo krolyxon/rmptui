@@ -15,17 +15,18 @@ pub struct App {
     /// check if app is running
     pub running: bool,
     pub conn: Connection,
-    pub queue_list: ContentList<String>,
-    pub pl_list: ContentList<String>,
-    pub selected_tab: SelectedTab,
-    pub browser: FileBrowser,
+    pub browser: FileBrowser,            // Directory browser
+    pub queue_list: ContentList<String>, // Stores the current playing queue
+    pub pl_list: ContentList<String>,    // Stores list of playlists
+    pub selected_tab: SelectedTab,       // Used to switch between tabs
 
     // Search
-    pub inputmode: InputMode,
-    pub search_input: String,
-    pub cursor_position: usize,
+    pub inputmode: InputMode,   // Defines input mode, Normal or Search
+    pub search_input: String,   // Stores the userinput to be searched
+    pub cursor_position: usize, // Stores the cursor position
 
-    // add to playlists
+    // playlist variables
+    // used to show playlist popup
     pub playlist_popup: bool,
     pub append_list: ContentList<String>,
 }
@@ -90,12 +91,13 @@ impl App {
         });
     }
 
+    // Rescan the queue into queue_list
     pub fn update_queue(&mut self) {
         self.queue_list.list.clear();
         Self::get_queue(&mut self.conn, &mut self.queue_list.list);
     }
 
-    pub fn get_playlist(conn: &mut Client) -> AppResult<Vec<String>> {
+    fn get_playlist(conn: &mut Client) -> AppResult<Vec<String>> {
         let list: Vec<String> = conn.playlists()?.iter().map(|p| p.clone().name).collect();
         Ok(list)
     }
@@ -110,11 +112,7 @@ impl App {
         Ok(list)
     }
 
-    pub fn update_playlist(&mut self) -> AppResult<()> {
-        Self::get_playlist(&mut self.conn.conn)?;
-        Ok(())
-    }
-
+    /// Handles the <Space> event key
     pub fn handle_add_or_remove_from_current_playlist(&mut self) -> AppResult<()> {
         match self.selected_tab {
             SelectedTab::DirectoryBrowser => {
@@ -170,6 +168,7 @@ impl App {
         Ok(())
     }
 
+    /// Cycle through tabs
     pub fn cycle_tabls(&mut self) {
         self.selected_tab = match self.selected_tab {
             SelectedTab::Queue => SelectedTab::DirectoryBrowser,
@@ -178,6 +177,7 @@ impl App {
         };
     }
 
+    /// handles the Enter event on the directory browser
     pub fn handle_enter(&mut self) -> AppResult<()> {
         let browser = &mut self.browser;
         let (t, path) = browser.filetree.get(browser.selected).unwrap();
@@ -214,14 +214,6 @@ impl App {
                 // updating queue, to avoid multiple pushes of the same songs if we enter multiple times before the queue gets updated
                 self.update_queue();
             }
-        }
-        Ok(())
-    }
-
-    pub fn search_song(&mut self) -> AppResult<()> {
-        if let Some(filename) = self.conn.get_full_path(&self.search_input) {
-            let song = self.conn.get_song_with_only_filename(&filename);
-            self.conn.push(&song)?;
         }
         Ok(())
     }

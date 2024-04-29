@@ -8,6 +8,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub type Error = Box<dyn std::error::Error>;
 
 #[derive(Debug)]
+/// struct storing the mpd Client related stuff
 pub struct Connection {
     pub conn: Client,
     pub songs_filenames: Vec<String>,
@@ -26,7 +27,7 @@ impl Connection {
         let mut conn = Client::connect(addrs).unwrap();
 
         let empty_song = Song {
-            file: "No Song  playing or in Queue".to_string(),
+            file: "No Song playing or in Queue".to_string(),
             ..Default::default()
         };
 
@@ -86,7 +87,7 @@ impl Connection {
     /// Update status
     pub fn update_status(&mut self) {
         let status = self.conn.status().unwrap();
-        let empty_song = self.get_song_with_only_filename("No Song  playing or in Queue");
+        let empty_song = self.get_song_with_only_filename("No Song playing or in Queue");
         let current_song = self
             .conn
             .currentsong()

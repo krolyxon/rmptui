@@ -6,6 +6,7 @@ use mpd::Song;
 use crate::{app::AppResult, connection::Connection};
 
 #[derive(Debug)]
+/// struct for working with directory browser tab in rmptui
 pub struct FileBrowser {
     pub filetree: Vec<(String, String)>,
     pub selected: usize,
@@ -61,9 +62,10 @@ impl FileBrowser {
             }
         }
 
+
+        // Add metadata
         dir_vec.extend(file_vec);
         self.filetree = dir_vec;
-
         self.songs.clear();
         for (t, song) in self.filetree.iter() {
             if t == "file" {
@@ -121,6 +123,7 @@ impl FileBrowser {
         // }
     }
 
+    /// handles going back event
     pub fn handle_go_back(&mut self, conn: &mut Connection) -> AppResult<()> {
         if self.prev_path != "." {
             let r = self.path.rfind("/").unwrap();
