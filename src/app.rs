@@ -170,7 +170,7 @@ impl App {
         self.selected_tab = match self.selected_tab {
             SelectedTab::Queue => SelectedTab::DirectoryBrowser,
             SelectedTab::DirectoryBrowser => SelectedTab::Playlists,
-            SelectedTab::Playlists => SelectedTab::Queue,
+            SelectedTab::Playlists => SelectedTab::DirectoryBrowser,
         };
     }
 

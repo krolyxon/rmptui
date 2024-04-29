@@ -62,6 +62,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     }
                 }
             }
+
         }
 
         match key_event.code {
@@ -199,6 +200,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         app.conn
                             .load_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
                     }
+
                 }
                 app.conn.update_status();
             }

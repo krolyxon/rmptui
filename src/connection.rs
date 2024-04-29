@@ -27,14 +27,7 @@ impl Connection {
 
         let empty_song = Song {
             file: "No Song  playing or in Queue".to_string(),
-            artist: None,
-            title: None,
-            duration: None,
-            last_mod: None,
-            name: None,
-            place: None,
-            range: None,
-            tags: vec![("".to_string(), "".to_string())],
+            ..Default::default()
         };
 
         let songs_filenames: Vec<String> = conn
@@ -70,7 +63,6 @@ impl Connection {
     /// Fzf prompt for selecting song
     pub fn play_fzf(&mut self) -> Result<()> {
         is_installed("fzf").map_err(|ex| ex)?;
-
         let ss = &self.songs_filenames;
         let fzf_choice = rust_fzf::select(ss.clone(), Vec::new()).unwrap();
         let index = get_choice_index(&self.songs_filenames, fzf_choice.get(0).unwrap());
@@ -174,29 +166,12 @@ impl Connection {
     pub fn get_song_with_only_filename(&self, filename: &str) -> Song {
         Song {
             file: filename.to_string(),
-            artist: None,
-            title: None,
-            duration: None,
-            last_mod: None,
-            name: None,
-            place: None,
-            range: None,
-            tags: vec![("".to_string(), "".to_string())],
+            ..Default::default()
         }
     }
 
     /// Given a song name from a directory, it returns the full path of the song in the database
     pub fn get_full_path(&self, short_path: &str) -> Option<String> {
-        // let list = self
-        //     .songs_filenames
-        //     .iter()
-        //     .map(|f| f.as_str())
-        //     .collect::<Vec<&str>>();
-        // let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&short_path, &list)
-        //     .get(0)
-        //     .unwrap()
-        //     .clone();
-
         for (i, f) in self.songs_filenames.iter().enumerate() {
             if f.contains(short_path) {
                 return Some(self.songs_filenames.get(i).unwrap().to_string());

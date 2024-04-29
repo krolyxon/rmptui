@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::app::{App, SelectedTab};
 use ratatui::{
     prelude::*,
@@ -30,7 +32,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     match app.selected_tab {
         SelectedTab::Queue => draw_queue(frame, app, layout[0]),
         SelectedTab::Playlists => draw_playlists(frame, app, layout[0]),
-        SelectedTab::DirectoryBrowser => draw_directory_browser(frame, app, layout[0]),
+        SelectedTab::DirectoryBrowser => draw_song_browser(frame, app, layout[0]),
+        // SelectedTab::SongBrowser => draw_song_browser(frame, app, layout[0]),
     }
 
     match app.inputmode {
@@ -63,6 +66,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
             if status {
                 list.push(ListItem::new(s.clone().magenta().bold()));
             } else {
+                // list.push(ListItem::new(s.clone()));
                 list.push(ListItem::new(s.clone()));
             }
         } else {
@@ -75,7 +79,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
     let list = List::new(list)
         .block(
             Block::default()
-                .title(format!("File Browser: {}", app.browser.path.clone()).bold())
+                .title(format!("Directory Browser: {}", app.browser.path.clone()).bold())
                 .title(
                     Title::from(format!("Total Songs: {}", total_songs).bold().green())
                         .alignment(Alignment::Center),
@@ -101,12 +105,120 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
     frame.render_stateful_widget(list, size, &mut song_state);
 }
 
+/// Draws the song browser
+fn draw_song_browser(frame: &mut Frame, app: &mut App, size: Rect) {
+    let total_songs = app.conn.conn.stats().unwrap().songs.to_string();
+
+    let rows = app.browser.filetree.iter().enumerate().map(|(i, (t, s))| {
+        if t == "file" {
+            let song = app.browser.songs.get(i).unwrap().clone();
+
+            // metadata
+            let title = song.clone().title.unwrap_or_else(|| song.clone().file);
+            let artist = song.clone().artist.unwrap_or_default().cyan();
+            let album = song
+                .tags
+                .iter()
+                .filter(|(x, _)| x == "Album")
+                .map(|(_, l)| l.clone())
+                .collect::<Vec<String>>()
+                .join("");
+
+            let track = song
+                .tags
+                .iter()
+                .filter(|(x, _)| x == "Track")
+                .map(|(_, l)| l.clone())
+                .collect::<Vec<String>>()
+                .join("");
+
+            let time = humantime::format_duration(
+                song.clone().duration.unwrap_or_else(|| Duration::new(0, 0)),
+            );
+
+            let mut status: bool = false;
+            for sn in app.queue_list.list.iter() {
+                if sn.contains(s) {
+                    status = true;
+                }
+            }
+
+            if status {
+                let row = Row::new(vec![
+                    Cell::from(artist),
+                    Cell::from(track.green()),
+                    Cell::from(title),
+                    Cell::from(album),
+                    Cell::from(time.to_string().red()),
+                ]);
+                row.magenta().bold()
+            } else {
+                let row = Row::new(vec![
+                    Cell::from(artist),
+                    Cell::from(track.green()),
+                    Cell::from(title),
+                    Cell::from(album),
+                    Cell::from(time.to_string().red()),
+                ]);
+                row
+            }
+        } else {
+            let row = Row::new(vec![Cell::from(format!("[{}]", *s))]);
+            row
+        }
+    });
+
+    let mut state = TableState::new();
+    let header = ["Artist", "Track", "Title", "Album", "Time"]
+        .into_iter()
+        .map(Cell::from)
+        .collect::<Row>()
+        .bold()
+        .height(1);
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Percentage(33),
+            Constraint::Percentage(3),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(3),
+        ],
+    )
+    .block(
+        Block::default()
+            .title(format!("Song Browser: {}", app.browser.path.clone()).bold())
+            .title(
+                Title::from(format!("Total Songs: {}", total_songs).bold().green())
+                    .alignment(Alignment::Center),
+            )
+            .title(
+                Title::from(format!("Volume: {}%", app.conn.volume).bold().green())
+                    .alignment(Alignment::Right),
+            )
+            .borders(Borders::ALL),
+    )
+    .highlight_style(
+        Style::default()
+            .add_modifier(Modifier::REVERSED)
+            .fg(Color::Cyan)
+            .bg(Color::Black),
+    )
+    .highlight_symbol(">>")
+    .header(header);
+
+    state.select(Some(app.browser.selected));
+    frame.render_stateful_widget(table, size, &mut state);
+}
+
 /// draws playing queue
 fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
     let mut queue_state = ListState::default();
     let title = Block::default()
         .title(Title::from("Play Queue".green().bold()))
-        .title(Title::from(format!("({} items)", app.queue_list.list.len()).bold()))
+        .title(Title::from(
+            format!("({} items)", app.queue_list.list.len()).bold(),
+        ))
         .title(
             Title::from(format!("Volume: {}%", app.conn.volume).bold().green())
                 .alignment(Alignment::Right),

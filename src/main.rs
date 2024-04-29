@@ -26,7 +26,7 @@ pub type Error = Box<dyn std::error::Error>;
 fn main() -> AppResult<()> {
     let args = Args::parse();
     let env_host = env::var("MPD_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let env_port  = env::var("MPD_PORT").unwrap_or_else(|_| "6600".to_string());
+    let env_port = env::var("MPD_PORT").unwrap_or_else(|_| "6600".to_string());
     let mut app = App::builder(format!("{}:{}", env_host, env_port).as_str())?;
 
     if !args.tui {
@@ -38,15 +38,7 @@ fn main() -> AppResult<()> {
             Some(Command::Status) => app.conn.status(),
             Some(Command::Pause) => app.conn.pause(),
             Some(Command::Toggle) => app.conn.toggle_pause(),
-            _ => {
-                // let mut vec: Vec<RSong> = Vec::new();
-                // for filename in app.conn.songs_filenames {
-                //     let song = RSong::new(&mut app.conn.conn, filename);
-                //     vec.push(song);
-                // }
-                // println!("{:#?}", vec);
-
-            }
+            _ => {}
         }
     }
     Ok(())
