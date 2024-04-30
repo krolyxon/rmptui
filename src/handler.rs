@@ -92,8 +92,8 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 }
 
                 app.search_input.clear();
-                app.inputmode = InputMode::Normal;
                 app.reset_cursor();
+                app.inputmode = InputMode::Normal;
             }
 
             KeyCode::Backspace => {
@@ -110,10 +110,41 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             _ => {}
         }
+    } else if app.inputmode == InputMode::PlaylistRename {
+        match key_event.code {
+            KeyCode::Esc => {
+                app.pl_newname_input.clear();
+                app.reset_cursor();
+                app.inputmode = InputMode::Normal;
+            }
+            KeyCode::Char(to_insert) => {
+                app.enter_char(to_insert);
+            }
+            KeyCode::Enter => {
+                app.conn.conn.pl_rename(app.pl_list.list.get(app.pl_list.index).unwrap(), &app.pl_newname_input)?;
+                app.pl_list.list = App::get_playlist(&mut app.conn.conn)?;
+                app.pl_newname_input.clear();
+                app.reset_cursor();
+                app.inputmode = InputMode::Normal;
+            }
 
-    // Playlist popup keybinds
-    //
-    // Keybind for when the "append to playlist" popup is visible
+            KeyCode::Backspace => {
+                app.delete_char();
+            }
+
+            KeyCode::Left => {
+                app.move_cursor_left();
+            }
+
+            KeyCode::Right => {
+                app.move_cursor_right();
+            }
+
+            _ => {}
+        }
+        // Playlist popup keybinds
+        //
+        // Keybind for when the "append to playlist" popup is visible
     } else if app.playlist_popup {
         match key_event.code {
             KeyCode::Char('q') | KeyCode::Esc => {
@@ -358,16 +389,17 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Search for songs
             KeyCode::Char('/') => {
-                app.inputmode = InputMode::toggle_editing_states(&app.inputmode);
+                if app.inputmode == InputMode::Normal {
+                    app.inputmode = InputMode::Editing;
+                } else {
+                    app.inputmode = InputMode::Normal;
+                }
             }
 
             // Remove from Current Playlsit
             KeyCode::Char(' ') | KeyCode::Backspace => {
                 app.handle_add_or_remove_from_current_playlist()?;
             }
-
-            // Change playlist name
-            KeyCode::Char('e') => if app.selected_tab == SelectedTab::Playlists {},
 
             // go to top of list
             KeyCode::Char('g') => match app.selected_tab {
@@ -384,6 +416,9 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 }
                 SelectedTab::Playlists => app.pl_list.index = app.pl_list.list.len() - 1,
             },
+
+            // Change playlist name
+            KeyCode::Char('e') => app.change_playlist_name()?,
             _ => {}
         }
     }

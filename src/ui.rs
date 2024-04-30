@@ -11,15 +11,7 @@ use ratatui::{
 pub enum InputMode {
     Editing,
     Normal,
-}
-
-impl InputMode {
-    pub fn toggle_editing_states(state: &InputMode) -> InputMode {
-        match state {
-            InputMode::Editing => return InputMode::Normal,
-            InputMode::Normal => return InputMode::Editing,
-        };
-    }
+    PlaylistRename,
 }
 
 /// Renders the user interface widgets
@@ -32,7 +24,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     match app.selected_tab {
         SelectedTab::Queue => draw_queue(frame, app, layout[0]),
-        // SelectedTab::Playlists => draw_playlists(frame, app, layout[0]),
         SelectedTab::Playlists => draw_playlist_viewer(frame, app, layout[0]),
         SelectedTab::DirectoryBrowser => draw_directory_browser(frame, app, layout[0]),
     }
@@ -43,6 +34,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         }
         InputMode::Editing => {
             draw_search_bar(frame, app, layout[1]);
+        }
+        InputMode::PlaylistRename => {
+            draw_rename_playlist(frame, app, layout[1]);
         }
     }
 
@@ -254,27 +248,18 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
     frame.render_stateful_widget(table, size, &mut state);
 }
 
-
 // Draw search bar
 fn draw_search_bar(frame: &mut Frame, app: &mut App, size: Rect) {
-    match app.inputmode {
-        InputMode::Normal =>
-            // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
-            {}
-
-        InputMode::Editing => {
-            // Make the cursor visible and ask ratatui to put it at the specified coordinates after
-            // rendering
-            #[allow(clippy::cast_possible_truncation)]
-            frame.set_cursor(
-                // Draw the cursor at the current position in the input field.
-                // This position is can be controlled via the left and right arrow key
-                size.x + app.cursor_position as u16 + 2,
-                // Move one line down, from the border to the input line
-                size.y + 1,
-            );
-        }
-    }
+    // Make the cursor visible and ask ratatui to put it at the specified coordinates after
+    // rendering
+    #[allow(clippy::cast_possible_truncation)]
+    frame.set_cursor(
+        // Draw the cursor at the current position in the input field.
+        // This position is can be controlled via the left and right arrow key
+        size.x + app.search_cursor_pos as u16 + 2,
+        // Move one line down, from the border to the input line
+        size.y + 1,
+    );
 
     let input = Paragraph::new("/".to_string() + &app.search_input)
         .style(Style::default())
@@ -399,7 +384,7 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
     let table = Table::new(
         rows,
         vec![
-            Constraint::Percentage(40),
+            Constraint::Min(40),
             Constraint::Percentage(40),
             Constraint::Percentage(20),
         ],
@@ -437,6 +422,26 @@ fn draw_add_to_playlist(frame: &mut Frame, app: &mut App, area: Rect) {
     state.select(Some(app.append_list.index));
     frame.render_widget(Clear, area); //this clears out the background
     frame.render_stateful_widget(list, area, &mut state);
+}
+
+fn draw_rename_playlist(frame: &mut Frame, app: &mut App, area: Rect) {
+    #[allow(clippy::cast_possible_truncation)]
+    frame.set_cursor(
+        // Draw the cursor at the current position in the input field.
+        // This position is can be controlled via the left and right arrow key
+        area.x + app.pl_cursor_pos as u16 + 2,
+        // Move one line down, from the border to the input line
+        area.y + 1,
+    );
+
+    let input = Paragraph::new("/".to_string() + &app.pl_newname_input)
+        .style(Style::default())
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Enter New Name: ".bold().green()),
+        );
+    frame.render_widget(input, area);
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

@@ -39,5 +39,5 @@ A MPD client in Rust
 - [x] search for songs
 - [x] Human readable time format
 - [x] metadata based tree view
-- [ ] view playlist
-- [ ] change playlist name
+- [x] view playlist
+- [x] change playlist name

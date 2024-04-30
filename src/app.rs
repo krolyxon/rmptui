@@ -21,9 +21,11 @@ pub struct App {
     pub selected_tab: SelectedTab,       // Used to switch between tabs
 
     // Search
-    pub inputmode: InputMode,   // Defines input mode, Normal or Search
-    pub search_input: String,   // Stores the userinput to be searched
-    pub cursor_position: usize, // Stores the cursor position
+    pub inputmode: InputMode,     // Defines input mode, Normal or Search
+    pub search_input: String,     // Stores the userinput to be searched
+    pub search_cursor_pos: usize, // Stores the cursor position for searching
+    pub pl_newname_input: String, // Stores the new name of the playlist
+    pub pl_cursor_pos: usize,     // Stores the cursor position for renaming playlist
 
     // playlist variables
     // used to show playlist popup
@@ -59,7 +61,9 @@ impl App {
             browser,
             inputmode: InputMode::Normal,
             search_input: String::new(),
-            cursor_position: 0,
+            pl_newname_input: String::new(),
+            search_cursor_pos: 0,
+            pl_cursor_pos: 0,
             playlist_popup: false,
             append_list,
         })
@@ -97,7 +101,7 @@ impl App {
         Self::get_queue(&mut self.conn, &mut self.queue_list.list);
     }
 
-    fn get_playlist(conn: &mut Client) -> AppResult<Vec<String>> {
+    pub fn get_playlist(conn: &mut Client) -> AppResult<Vec<String>> {
         let list: Vec<String> = conn.playlists()?.iter().map(|p| p.clone().name).collect();
         Ok(list)
     }
@@ -220,49 +224,111 @@ impl App {
 
     // Cursor movements
     pub fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.cursor_position.saturating_sub(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_left);
+        match self.inputmode {
+            InputMode::PlaylistRename => {
+                let cursor_moved_left = self.pl_cursor_pos.saturating_sub(1);
+                self.pl_cursor_pos = self.clamp_cursor(cursor_moved_left);
+            }
+            InputMode::Editing => {
+                let cursor_moved_left = self.search_cursor_pos.saturating_sub(1);
+                self.search_cursor_pos = self.clamp_cursor(cursor_moved_left);
+            }
+            _ => {}
+        }
     }
 
     pub fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.cursor_position.saturating_add(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_right);
+        match self.inputmode {
+            InputMode::PlaylistRename => {
+                let cursor_moved_right = self.pl_cursor_pos.saturating_add(1);
+                self.pl_cursor_pos = self.clamp_cursor(cursor_moved_right);
+            }
+            InputMode::Editing => {
+                let cursor_moved_right = self.search_cursor_pos.saturating_add(1);
+                self.search_cursor_pos = self.clamp_cursor(cursor_moved_right);
+            }
+            _ => {}
+        }
     }
 
     pub fn enter_char(&mut self, new_char: char) {
-        self.search_input.insert(self.cursor_position, new_char);
-
-        self.move_cursor_right();
+        match self.inputmode {
+            InputMode::PlaylistRename => {
+                self.pl_newname_input.insert(self.pl_cursor_pos, new_char);
+                self.move_cursor_right();
+            }
+            InputMode::Editing => {
+                self.search_input.insert(self.search_cursor_pos, new_char);
+                self.move_cursor_right();
+            }
+            _ => {}
+        }
     }
 
     pub fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = self.cursor_position != 0;
+        let is_not_cursor_leftmost = match self.inputmode {
+            InputMode::PlaylistRename => self.pl_cursor_pos != 0,
+            InputMode::Editing => self.search_cursor_pos != 0,
+            _ => false,
+        };
+
         if is_not_cursor_leftmost {
             // Method "remove" is not used on the saved text for deleting the selected char.
             // Reason: Using remove on String works on bytes instead of the chars.
             // Using remove would require special care because of char boundaries.
 
-            let current_index = self.cursor_position;
+            let current_index = match self.inputmode {
+                InputMode::Editing => self.search_cursor_pos,
+                InputMode::PlaylistRename => self.pl_cursor_pos,
+                _ => 0,
+            };
+
             let from_left_to_current_index = current_index - 1;
 
-            // Getting all characters before the selected character.
-            let before_char_to_delete = self.search_input.chars().take(from_left_to_current_index);
-            // Getting all characters after selected character.
-            let after_char_to_delete = self.search_input.chars().skip(current_index);
-
-            // Put all characters together except the selected one.
-            // By leaving the selected one out, it is forgotten and therefore deleted.
-            self.search_input = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.move_cursor_left();
+            if self.inputmode == InputMode::PlaylistRename {
+                // Getting all characters before the selected character.
+                let before_char_to_delete = self
+                    .pl_newname_input
+                    .chars()
+                    .take(from_left_to_current_index);
+                // Getting all characters after selected character.
+                let after_char_to_delete = self.pl_newname_input.chars().skip(current_index);
+                // Put all characters together except the selected one.
+                // By leaving the selected one out, it is forgotten and therefore deleted.
+                self.pl_newname_input = before_char_to_delete.chain(after_char_to_delete).collect();
+                self.move_cursor_left();
+            } else if self.inputmode == InputMode::Editing {
+                // Getting all characters before the selected character.
+                let before_char_to_delete =
+                    self.search_input.chars().take(from_left_to_current_index);
+                // Getting all characters after selected character.
+                let after_char_to_delete = self.search_input.chars().skip(current_index);
+                // Put all characters together except the selected one.
+                // By leaving the selected one out, it is forgotten and therefore deleted.
+                self.search_input = before_char_to_delete.chain(after_char_to_delete).collect();
+                self.move_cursor_left();
+            }
         }
     }
 
     pub fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.search_input.len())
+        match self.inputmode {
+            InputMode::PlaylistRename => new_cursor_pos.clamp(0, self.pl_newname_input.len()),
+            InputMode::Editing => new_cursor_pos.clamp(0, self.search_input.len()),
+            _ => 0,
+        }
     }
 
     pub fn reset_cursor(&mut self) {
-        self.cursor_position = 0;
+        match self.inputmode {
+            InputMode::Editing => {
+                self.search_cursor_pos = 0;
+            }
+            InputMode::PlaylistRename => {
+                self.pl_cursor_pos = 0;
+            }
+            _ => {}
+        }
     }
 
     /// Given time in seconds, convert it to hh:mm:ss
@@ -276,5 +342,15 @@ impl App {
         } else {
             format!("{:02}:{:02}:{:02}", h, m, s)
         }
+    }
+
+    pub fn change_playlist_name(&mut self) -> AppResult<()> {
+        match self.selected_tab {
+            SelectedTab::Playlists => {
+                self.inputmode = InputMode::PlaylistRename;
+            }
+            _ => {}
+        }
+        Ok(())
     }
 }
