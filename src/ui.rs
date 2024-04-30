@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use crate::app::{App, SelectedTab};
-use mpd::Song;
 use ratatui::{
     prelude::*,
     widgets::{block::Title, *},
@@ -77,28 +76,22 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
 
             let mut status: bool = false;
             for sn in app.queue_list.list.iter() {
-                if sn.contains(s) {
+                if sn.file.contains(s) {
                     status = true;
                 }
             }
 
+            let row = Row::new(vec![
+                Cell::from(artist),
+                Cell::from(track.green()),
+                Cell::from(title),
+                Cell::from(album.cyan()),
+                Cell::from(time.to_string().magenta()),
+            ]);
+
             if status {
-                let row = Row::new(vec![
-                    Cell::from(artist),
-                    Cell::from(track.green()),
-                    Cell::from(title),
-                    Cell::from(album),
-                    Cell::from(time.to_string().magenta()),
-                ]);
                 row.magenta().bold()
             } else {
-                let row = Row::new(vec![
-                    Cell::from(artist),
-                    Cell::from(track.green()),
-                    Cell::from(title),
-                    Cell::from(album),
-                    Cell::from(time.to_string().magenta()),
-                ]);
                 row
             }
         } else {
@@ -153,17 +146,8 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
 
 /// draws playing queue
 fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
-    let rows = app.queue_list.list.iter().map(|s| {
+    let rows = app.queue_list.list.iter().map(|song| {
         // metadata
-        let song = app
-            .conn
-            .conn
-            .lsinfo(&Song {
-                file: app.conn.get_full_path(&s).unwrap_or_default(),
-                ..Default::default()
-            })
-            .unwrap_or_default();
-        let song = song.get(0).unwrap();
         let title = song.clone().title.unwrap_or_else(|| song.clone().file);
         let artist = song.clone().artist.unwrap_or_default().cyan();
         let album = song
@@ -184,23 +168,17 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
 
         let time = App::format_time(song.clone().duration.unwrap_or_else(|| Duration::new(0, 0)));
 
-        if s.contains(&app.conn.current_song.file) {
-            let row = Row::new(vec![
-                Cell::from(artist),
-                Cell::from(track.green()),
-                Cell::from(title),
-                Cell::from(album),
-                Cell::from(time.to_string().magenta()),
-            ]);
+        let row = Row::new(vec![
+            Cell::from(artist),
+            Cell::from(track.green()),
+            Cell::from(title),
+            Cell::from(album.cyan()),
+            Cell::from(time.to_string().magenta()),
+        ]);
+
+        if song.file.contains(&app.conn.current_song.file) {
             row.magenta().bold()
         } else {
-            let row = Row::new(vec![
-                Cell::from(artist),
-                Cell::from(track.green()),
-                Cell::from(title),
-                Cell::from(album),
-                Cell::from(time.to_string().magenta()),
-            ]);
             row
         }
     });

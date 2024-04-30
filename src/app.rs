@@ -3,8 +3,9 @@ use std::time::Duration;
 use crate::browser::FileBrowser;
 use crate::connection::Connection;
 use crate::list::ContentList;
+use crate::queue::Queue;
 use crate::ui::InputMode;
-use mpd::Client;
+use mpd::{Client, Song};
 
 // Application result type
 pub type AppResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -16,7 +17,7 @@ pub struct App {
     pub running: bool,
     pub conn: Connection,
     pub browser: FileBrowser,            // Directory browser
-    pub queue_list: ContentList<String>, // Stores the current playing queue
+    pub queue_list: Queue, // Stores the current playing queue
     pub pl_list: ContentList<String>,    // Stores list of playlists
     pub selected_tab: SelectedTab,       // Used to switch between tabs
 
@@ -33,6 +34,8 @@ pub struct App {
     pub append_list: ContentList<String>,
 }
 
+
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum SelectedTab {
     DirectoryBrowser,
@@ -43,7 +46,7 @@ pub enum SelectedTab {
 impl App {
     pub fn builder(addrs: &str) -> AppResult<Self> {
         let mut conn = Connection::new(addrs).unwrap();
-        let mut queue_list = ContentList::new();
+        let mut queue_list = Queue::new();
         let mut pl_list = ContentList::new();
         pl_list.list = Self::get_playlist(&mut conn.conn)?;
 
@@ -78,7 +81,7 @@ impl App {
         self.running = false;
     }
 
-    pub fn get_queue(conn: &mut Connection, vec: &mut Vec<String>) {
+    pub fn get_queue(conn: &mut Connection, vec: &mut Vec<Song>) {
         // conn.conn.queue().unwrap().into_iter().for_each(|x| {
         //     if let Some(title) = x.title {
         //         if let Some(artist) = x.artist {
@@ -91,7 +94,8 @@ impl App {
         //     }
         // });
         conn.conn.queue().unwrap().into_iter().for_each(|x| {
-            vec.push(x.file);
+            // vec.push(x.title.unwrap());
+            vec.push(x);
         });
     }
 
@@ -124,7 +128,7 @@ impl App {
 
                 let mut status = false;
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-                    if song.contains(file) {
+                    if song.file.contains(file) {
                         self.conn.conn.delete(i as u32).unwrap();
                         status = true;
                     }
@@ -150,11 +154,11 @@ impl App {
                     .queue_list
                     .list
                     .get(self.queue_list.index)
-                    .unwrap()
+                    .unwrap().file
                     .to_string();
 
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-                    if song.contains(&file) {
+                    if song.file.contains(&file) {
                         self.conn.conn.delete(i as u32).unwrap();
                         if self.queue_list.index == self.queue_list.list.len() - 1
                             && self.queue_list.index != 0
@@ -203,7 +207,7 @@ impl App {
             //     .get(0)
             //     .unwrap()
             //     .clone();
-            let index = self.queue_list.list.iter().position(|x| x.contains(path));
+            let index = self.queue_list.list.iter().position(|x| x.file.contains(path));
 
             if index.is_some() {
                 self.conn.conn.switch(index.unwrap() as u32)?;

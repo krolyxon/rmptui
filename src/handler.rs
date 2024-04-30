@@ -34,13 +34,13 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     .queue_list
                     .list
                     .iter()
-                    .map(|f| f.as_str())
+                    .map(|f| f.file.as_str())
                     .collect::<Vec<&str>>();
                 let res: Vec<(&str, f32)> = fuzzy_search_sorted(&app.search_input, &list);
                 let res = res.iter().map(|(x, _)| *x).collect::<Vec<&str>>();
 
                 for (i, item) in app.queue_list.list.iter().enumerate() {
-                    if item.contains(res.get(0).unwrap()) {
+                    if item.file.contains(res.get(0).unwrap()) {
                         app.queue_list.index = i;
                     }
                 }
@@ -162,7 +162,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 match app.selected_tab {
                     SelectedTab::Queue => {
                         s_index = app.queue_list.index;
-                        let short_path = app.queue_list.list.get(s_index).unwrap().to_string();
+                        let short_path = &app.queue_list.list.get(s_index).unwrap().file;
 
                         if let Some(full_path) = app.conn.get_full_path(&short_path) {
                             let song = app.conn.get_song_with_only_filename(&full_path);
