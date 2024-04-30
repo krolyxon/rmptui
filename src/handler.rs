@@ -23,7 +23,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 let res = res.iter().map(|(x, _)| *x).collect::<Vec<&str>>();
 
                 for (i, (_, item)) in app.browser.filetree.iter().enumerate() {
-                    if item.contains(res.get(0).unwrap()) {
+                    if item.contains(res.first().unwrap()) {
                         app.browser.selected = i;
                     }
                 }
@@ -40,7 +40,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 let res = res.iter().map(|(x, _)| *x).collect::<Vec<&str>>();
 
                 for (i, item) in app.queue_list.list.iter().enumerate() {
-                    if item.file.contains(res.get(0).unwrap()) {
+                    if item.file.contains(res.first().unwrap()) {
                         app.queue_list.index = i;
                     }
                 }
@@ -57,7 +57,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 let res = res.iter().map(|(x, _)| *x).collect::<Vec<&str>>();
 
                 for (i, item) in app.pl_list.list.iter().enumerate() {
-                    if item.contains(res.get(0).unwrap()) {
+                    if item.contains(res.first().unwrap()) {
                         app.pl_list.index = i;
                     }
                 }
@@ -83,7 +83,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     .collect::<Vec<&str>>();
 
                 let res: Vec<(&str, f32)> = fuzzy_search_sorted(&app.search_input, &list);
-                let (res, _) = res.get(0).unwrap();
+                let (res, _) = res.first().unwrap();
 
                 for (i, (_, item)) in app.browser.filetree.iter().enumerate() {
                     if item.contains(res) {
@@ -121,7 +121,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.enter_char(to_insert);
             }
             KeyCode::Enter => {
-                app.conn.conn.pl_rename(app.pl_list.list.get(app.pl_list.index).unwrap(), &app.pl_newname_input)?;
+                app.conn.conn.pl_rename(
+                    app.pl_list.list.get(app.pl_list.index).unwrap(),
+                    &app.pl_newname_input,
+                )?;
                 app.pl_list.list = App::get_playlist(&mut app.conn.conn)?;
                 app.pl_newname_input.clear();
                 app.reset_cursor();
@@ -164,10 +167,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         s_index = app.queue_list.index;
                         let short_path = &app.queue_list.list.get(s_index).unwrap().file;
 
-                        if let Some(full_path) = app.conn.get_full_path(&short_path) {
+                        if let Some(full_path) = app.conn.get_full_path(short_path) {
                             let song = app.conn.get_song_with_only_filename(&full_path);
 
-                            if pl_name.to_string() == "Current Playlist" {
+                            if *pl_name == "Current Playlist" {
                                 app.conn.conn.push(&song)?;
                                 app.update_queue();
                             } else {
@@ -183,7 +186,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                             if let Some(full_path) = app.conn.get_full_path(short_path) {
                                 let song = app.conn.get_song_with_only_filename(&full_path);
 
-                                if pl_name.to_string() == "Current Playlist" {
+                                if *pl_name == "Current Playlist" {
                                     app.conn.conn.push(&song)?;
                                     app.update_queue();
                                 } else {
@@ -199,9 +202,9 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                                         "wma", "mpc", "aiff", "dff", "mp2", "mka",
                                     ])
                                 {
-                                    let full_path = app.conn.get_full_path(&f).unwrap_or_default();
+                                    let full_path = app.conn.get_full_path(f).unwrap_or_default();
                                     let song = app.conn.get_song_with_only_filename(&full_path);
-                                    if pl_name.to_string() == "Current Playlist" {
+                                    if *pl_name == "Current Playlist" {
                                         app.conn.conn.push(&song)?;
                                     } else {
                                         app.conn.add_to_playlist(pl_name, &song)?;
@@ -371,10 +374,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Delete highlighted song from the queue
             KeyCode::Char('d') => {
-                if app.queue_list.index >= app.queue_list.list.len() - 1 {
-                    if app.queue_list.index != 0 {
-                        app.queue_list.index -= 1;
-                    }
+                if app.queue_list.index >= app.queue_list.list.len() - 1
+                    && app.queue_list.index != 0
+                {
+                    app.queue_list.index -= 1;
                 }
 
                 app.conn.conn.delete(app.queue_list.index as u32)?;

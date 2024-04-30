@@ -23,7 +23,7 @@ pub trait FileExtension {
 
 impl<P: AsRef<Path>> FileExtension for P {
     fn has_extension<S: AsRef<str>>(&self, extensions: &[S]) -> bool {
-        if let Some(ref extension) = self.as_ref().extension().and_then(OsStr::to_str) {
+        if let Some(extension) = self.as_ref().extension().and_then(OsStr::to_str) {
             return extensions
                 .iter()
                 .any(|x| x.as_ref().eq_ignore_ascii_case(extension));
@@ -84,7 +84,7 @@ impl FileBrowser {
                         }]
                     });
 
-                self.songs.push(v.get(0).unwrap().clone());
+                self.songs.push(v.first().unwrap().clone());
             } else {
                 let v = Song {
                     file: "".to_string(),
@@ -126,7 +126,7 @@ impl FileBrowser {
     /// handles going back event
     pub fn handle_go_back(&mut self, conn: &mut Connection) -> AppResult<()> {
         if self.prev_path != "." {
-            let r = self.path.rfind("/").unwrap();
+            let r = self.path.rfind('/').unwrap();
             self.path = self.path.as_str()[..r].to_string();
             self.update_directory(conn)?;
         } else {
@@ -136,5 +136,13 @@ impl FileBrowser {
 
         self.selected = self.prev_selected;
         Ok(())
+    }
+}
+
+
+
+impl Default for FileBrowser {
+    fn default() -> Self {
+        Self::new()
     }
 }

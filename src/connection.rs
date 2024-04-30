@@ -47,7 +47,7 @@ impl Connection {
         let current_song = conn
             .currentsong()
             .unwrap_or_else(|_| Some(empty_song.clone()))
-            .unwrap_or_else(|| empty_song);
+            .unwrap_or(empty_song);
         Ok(Self {
             conn,
             songs_filenames,
@@ -63,10 +63,10 @@ impl Connection {
 
     /// Fzf prompt for selecting song
     pub fn play_fzf(&mut self) -> Result<()> {
-        is_installed("fzf").map_err(|ex| ex)?;
+        is_installed("fzf")?;
         let ss = &self.songs_filenames;
         let fzf_choice = rust_fzf::select(ss.clone(), Vec::new()).unwrap();
-        let index = get_choice_index(&self.songs_filenames, fzf_choice.get(0).unwrap());
+        let index = get_choice_index(&self.songs_filenames, fzf_choice.first().unwrap());
         let song = self.get_song_with_only_filename(ss.get(index).unwrap());
         self.push(&song)?;
 
@@ -75,7 +75,7 @@ impl Connection {
 
     /// Dmenu prompt for selecting songs
     pub fn play_dmenu(&mut self) -> Result<()> {
-        is_installed("dmenu").map_err(|ex| ex)?;
+        is_installed("dmenu")?;
         let ss: Vec<&str> = self.songs_filenames.iter().map(|x| x.as_str()).collect();
         let op = dmenu!(iter &ss; args "-p", "Choose a song: ", "-l", "30");
         let index = get_choice_index(&self.songs_filenames, &op);
@@ -92,7 +92,7 @@ impl Connection {
             .conn
             .currentsong()
             .unwrap_or_else(|_| Some(empty_song.clone()))
-            .unwrap_or_else(|| empty_song);
+            .unwrap_or(empty_song);
 
         // Playback State
         match status.state {
@@ -205,12 +205,12 @@ impl Connection {
     pub fn now_playing(&mut self) -> Result<Option<String>> {
         if let Some(s) = &self.current_song.title {
             if let Some(a) = &self.current_song.artist {
-                return Ok(Some(format!("\"{}\" By {}", s, a)));
+                Ok(Some(format!("\"{}\" By {}", s, a)))
             } else {
-                return Ok(Some(s.to_string()));
+                Ok(Some(s.to_string()))
             }
         } else {
-            return Ok(Some(self.current_song.file.clone()));
+            Ok(Some(self.current_song.file.clone()))
         }
     }
 
@@ -262,7 +262,7 @@ impl Connection {
 }
 
 /// Gets the index of the string from the Vector
-fn get_choice_index(ss: &Vec<String>, selection: &str) -> usize {
+fn get_choice_index(ss: &[String], selection: &str) -> usize {
     let mut choice: usize = 0;
     if let Some(index) = ss.iter().position(|s| s == selection) {
         choice = index;

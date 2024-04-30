@@ -17,10 +17,8 @@ impl Queue {
     // Go to next item in list
     pub fn next(&mut self) {
         let len = self.list.len();
-        if len != 0 {
-            if self.index < len - 1 {
-                self.index += 1;
-            }
+        if len != 0 && self.index < len - 1 {
+            self.index += 1;
         }
     }
 
@@ -33,5 +31,11 @@ impl Queue {
 
     pub fn reset_index(&mut self) {
         self.index = 0;
+    }
+}
+
+impl Default for Queue {
+    fn default() -> Self {
+        Self::new()
     }
 }

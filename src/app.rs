@@ -16,10 +16,10 @@ pub struct App {
     /// check if app is running
     pub running: bool,
     pub conn: Connection,
-    pub browser: FileBrowser,            // Directory browser
-    pub queue_list: Queue, // Stores the current playing queue
-    pub pl_list: ContentList<String>,    // Stores list of playlists
-    pub selected_tab: SelectedTab,       // Used to switch between tabs
+    pub browser: FileBrowser,         // Directory browser
+    pub queue_list: Queue,            // Stores the current playing queue
+    pub pl_list: ContentList<String>, // Stores list of playlists
+    pub selected_tab: SelectedTab,    // Used to switch between tabs
 
     // Search
     pub inputmode: InputMode,     // Defines input mode, Normal or Search
@@ -33,8 +33,6 @@ pub struct App {
     pub playlist_popup: bool,
     pub append_list: ContentList<String>,
 }
-
-
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SelectedTab {
@@ -135,7 +133,7 @@ impl App {
                 }
 
                 if !status {
-                    if let Some(full_path) = &self.conn.get_full_path(&file) {
+                    if let Some(full_path) = &self.conn.get_full_path(file) {
                         let song = self.conn.get_song_with_only_filename(full_path);
                         self.conn.conn.push(&song)?;
                     }
@@ -147,14 +145,15 @@ impl App {
             }
 
             SelectedTab::Queue => {
-                if self.queue_list.list.len() == 0 {
+                if self.queue_list.list.is_empty() {
                     return Ok(());
                 }
                 let file = self
                     .queue_list
                     .list
                     .get(self.queue_list.index)
-                    .unwrap().file
+                    .unwrap()
+                    .file
                     .to_string();
 
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
@@ -207,7 +206,11 @@ impl App {
             //     .get(0)
             //     .unwrap()
             //     .clone();
-            let index = self.queue_list.list.iter().position(|x| x.file.contains(path));
+            let index = self
+                .queue_list
+                .list
+                .iter()
+                .position(|x| x.file.contains(path));
 
             if index.is_some() {
                 self.conn.conn.switch(index.unwrap() as u32)?;
@@ -349,11 +352,8 @@ impl App {
     }
 
     pub fn change_playlist_name(&mut self) -> AppResult<()> {
-        match self.selected_tab {
-            SelectedTab::Playlists => {
-                self.inputmode = InputMode::PlaylistRename;
-            }
-            _ => {}
+        if self.selected_tab == SelectedTab::Playlists {
+            self.inputmode = InputMode::PlaylistRename;
         }
         Ok(())
     }
