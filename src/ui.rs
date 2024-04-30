@@ -32,7 +32,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     match app.selected_tab {
         SelectedTab::Queue => draw_queue(frame, app, layout[0]),
-        SelectedTab::Playlists => draw_playlists(frame, app, layout[0]),
+        // SelectedTab::Playlists => draw_playlists(frame, app, layout[0]),
+        SelectedTab::Playlists => draw_playlist_viewer(frame, app, layout[0]),
         SelectedTab::DirectoryBrowser => draw_directory_browser(frame, app, layout[0]),
     }
 
@@ -122,7 +123,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
     let table = Table::new(
         rows,
         [
-            Constraint::Percentage(20),
+            Constraint::Percentage(34),
             Constraint::Percentage(3),
             Constraint::Min(30),
             Constraint::Percentage(30),
@@ -220,7 +221,7 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
     let table = Table::new(
         rows,
         [
-            Constraint::Percentage(20),
+            Constraint::Percentage(34),
             Constraint::Percentage(3),
             Constraint::Min(30),
             Constraint::Percentage(30),
@@ -377,6 +378,68 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
         .ratio(app.conn.get_progress_ratio());
 
     frame.render_widget(progress_bar, size);
+}
+
+fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
+    let layouts = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(vec![Constraint::Percentage(40), Constraint::Percentage(60)])
+        .split(area);
+
+    // Draw list of playlists
+    let mut state = ListState::default();
+    let title = Block::default().title(Title::from("Playlist".green().bold()));
+    let list = List::new(app.pl_list.list.clone())
+        .block(title.borders(Borders::ALL))
+        .highlight_style(
+            Style::new()
+                .fg(Color::Cyan)
+                .bg(Color::Black)
+                .add_modifier(Modifier::BOLD)
+                .add_modifier(Modifier::REVERSED),
+        )
+        .highlight_symbol(">>")
+        .repeat_highlight_symbol(true);
+    state.select(Some(app.pl_list.index));
+    frame.render_stateful_widget(list, layouts[0], &mut state);
+
+    // Playlist viewer
+    let pl_name = app.pl_list.list.get(app.pl_list.index).unwrap();
+    let songs = app.conn.conn.playlist(pl_name).unwrap();
+    let rows = songs.iter().map(|song| {
+        let title = song.clone().title.unwrap_or_default().cyan();
+        let artist = song.clone().artist.unwrap_or_else(|| song.clone().file);
+        let time = App::format_time(song.clone().duration.unwrap_or_else(|| Duration::new(0, 0)));
+
+        let row = Row::new(vec![
+            Cell::from(artist),
+            Cell::from(title),
+            Cell::from(time.to_string().green()),
+        ]);
+        row
+    });
+
+    let title = Block::default()
+        .title(format!("Content: ({} items)", songs.len()).bold())
+        .borders(Borders::ALL);
+    let table = Table::new(
+        rows,
+        vec![
+            Constraint::Percentage(40),
+            Constraint::Percentage(40),
+            Constraint::Percentage(20),
+        ],
+    )
+    .block(title)
+    .highlight_style(
+        Style::default()
+            .add_modifier(Modifier::REVERSED)
+            .fg(Color::Cyan)
+            .bg(Color::Black),
+    )
+    .highlight_symbol(">>")
+    .flex(layout::Flex::SpaceBetween);
+    frame.render_widget(table, layouts[1]);
 }
 
 fn draw_add_to_playlist(frame: &mut Frame, app: &mut App, area: Rect) {
