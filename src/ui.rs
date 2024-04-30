@@ -254,32 +254,6 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
     frame.render_stateful_widget(table, size, &mut state);
 }
 
-/// draws all playlists
-fn draw_playlists(frame: &mut Frame, app: &mut App, size: Rect) {
-    let mut state = ListState::default();
-
-    let title = Block::default()
-        .title(Title::from("Playlist".green().bold()))
-        .title(
-            Title::from(format!("Volume: {}%", app.conn.volume).bold().green())
-                .alignment(Alignment::Right),
-        );
-
-    let list = List::new(app.pl_list.list.clone())
-        .block(title.borders(Borders::ALL))
-        .highlight_style(
-            Style::new()
-                .fg(Color::Cyan)
-                .bg(Color::Black)
-                .add_modifier(Modifier::BOLD)
-                .add_modifier(Modifier::REVERSED),
-        )
-        .highlight_symbol(">>")
-        .repeat_highlight_symbol(true);
-
-    state.select(Some(app.pl_list.index));
-    frame.render_stateful_widget(list, size, &mut state);
-}
 
 // Draw search bar
 fn draw_search_bar(frame: &mut Frame, app: &mut App, size: Rect) {
