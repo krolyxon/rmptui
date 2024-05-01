@@ -362,9 +362,9 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
     let table = Table::new(
         rows,
         vec![
-            Constraint::Min(40),
-            Constraint::Percentage(40),
-            Constraint::Percentage(20),
+            Constraint::Min(48),
+            Constraint::Percentage(48),
+            Constraint::Percentage(4),
         ],
     )
     .block(title)

@@ -3,7 +3,6 @@ use std::time::Duration;
 use crate::browser::FileBrowser;
 use crate::connection::Connection;
 use crate::list::ContentList;
-use crate::queue::Queue;
 use crate::ui::InputMode;
 use mpd::{Client, Song};
 
@@ -16,10 +15,10 @@ pub struct App {
     /// check if app is running
     pub running: bool,
     pub conn: Connection,
-    pub browser: FileBrowser,         // Directory browser
-    pub queue_list: Queue,            // Stores the current playing queue
-    pub pl_list: ContentList<String>, // Stores list of playlists
-    pub selected_tab: SelectedTab,    // Used to switch between tabs
+    pub browser: FileBrowser,               // Directory browser
+    pub queue_list: ContentList<Song>,      // Stores the current playing queue
+    pub pl_list: ContentList<String>,       // Stores list of playlists
+    pub selected_tab: SelectedTab,          // Used to switch between tabs
 
     // Search
     pub inputmode: InputMode,     // Defines input mode, Normal or Search
@@ -44,7 +43,7 @@ pub enum SelectedTab {
 impl App {
     pub fn builder(addrs: &str) -> AppResult<Self> {
         let mut conn = Connection::new(addrs).unwrap();
-        let mut queue_list = Queue::new();
+        let mut queue_list = ContentList::new();
         let mut pl_list = ContentList::new();
         pl_list.list = Self::get_playlist(&mut conn.conn)?;
 

@@ -24,6 +24,3 @@ pub mod handler;
 
 /// Application
 pub mod app;
-
-/// The Queue structure
-pub mod queue;
