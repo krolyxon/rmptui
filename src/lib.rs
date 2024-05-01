@@ -16,11 +16,8 @@ pub mod list;
 /// File Browser
 pub mod browser;
 
-/// Event Handler
+/// Event Handler/ keymaps
 pub mod event;
-
-/// KeyEvent Handler
-pub mod handler;
 
 /// Application
 pub mod app;
