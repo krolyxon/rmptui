@@ -12,6 +12,8 @@ A MPD client in Rust
 - `D` to get dmenu prompt
 - `j` OR `Down` to scroll down
 - `k` OR `Up` to scroll up
+- `J` to swap highlighted song with next one
+- `K` to swap highlighted song with previous one
 - `l` OR `Right` add song to playlist or go inside the directory
 - `h` OR `Left` to go back to previous directory
 - `Tab` to cycle through tabs
@@ -41,3 +43,4 @@ A MPD client in Rust
 - [x] metadata based tree view
 - [x] view playlist
 - [x] change playlist name
+- [ ] add lyrics fetcher

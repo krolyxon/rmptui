@@ -175,6 +175,33 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.update_queue();
             }
 
+            // Swap highlighted song with next one
+            KeyCode::Char('J') => {
+                let current: u32 = app.queue_list.index as u32;
+                let next: u32 = if (current + 1) as usize == app.queue_list.list.len() {
+                    app.queue_list.index as u32
+                } else {
+                    app.queue_list.index += 1;
+                    (current + 1) as u32
+                };
+                app.conn.conn.swap(current, next)?;
+                app.update_queue();
+            }
+
+            // Swap highlighted song with previous one
+            KeyCode::Char('K') => {
+                let current: u32 = app.queue_list.index as u32;
+                let prev: u32 = if current == 0 {
+                    app.queue_list.index as u32
+                } else {
+                    app.queue_list.index -= 1;
+                    (current - 1) as u32
+                };
+                app.conn.conn.swap(current, prev)?;
+                app.update_queue();
+            }
+
+
             // Update MPD database
             KeyCode::Char('U') => {
                 app.conn.conn.rescan()?;
