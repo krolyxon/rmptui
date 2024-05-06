@@ -136,7 +136,6 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
             .fg(Color::Cyan)
             .bg(Color::Black),
     )
-    .highlight_symbol(">>")
     .header(header)
     .flex(layout::Flex::Legacy);
 
@@ -218,7 +217,6 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
             .fg(Color::Cyan)
             .bg(Color::Black),
     )
-    .highlight_symbol(">>")
     .header(header)
     .flex(layout::Flex::Legacy);
 
@@ -335,7 +333,6 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
                 .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::REVERSED),
         )
-        .highlight_symbol(">>")
         .repeat_highlight_symbol(true);
     state.select(Some(app.pl_list.index));
     frame.render_stateful_widget(list, layouts[0], &mut state);
@@ -374,7 +371,6 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
             .fg(Color::Cyan)
             .bg(Color::Black),
     )
-    .highlight_symbol(">>")
     .flex(layout::Flex::SpaceBetween);
     frame.render_widget(table, layouts[1]);
 }
@@ -394,7 +390,6 @@ fn draw_add_to_playlist(frame: &mut Frame, app: &mut App, area: Rect) {
                 .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::REVERSED),
         )
-        .highlight_symbol(">>")
         .repeat_highlight_symbol(true);
 
     state.select(Some(app.append_list.index));
