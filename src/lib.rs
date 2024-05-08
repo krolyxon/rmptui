@@ -1,6 +1,3 @@
-/// Command line interface (deprecated)
-pub mod cli;
-
 /// Handle mpd connection
 pub mod connection;
 

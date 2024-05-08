@@ -177,7 +177,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         app.queue_list.index as u32
                     } else {
                         app.queue_list.index += 1;
-                        (current + 1) as u32
+                        current + 1
                     };
                     app.conn.conn.swap(current, next)?;
                     app.update_queue();
@@ -190,7 +190,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         app.queue_list.index as u32
                     } else {
                         app.queue_list.index -= 1;
-                        (current - 1) as u32
+                        current - 1
                     };
                     app.conn.conn.swap(current, prev)?;
                     app.update_queue();

@@ -61,18 +61,6 @@ impl Connection {
         })
     }
 
-    /// Fzf prompt for selecting song
-    pub fn play_fzf(&mut self) -> Result<()> {
-        is_installed("fzf")?;
-        let ss = &self.songs_filenames;
-        let fzf_choice = rust_fzf::select(ss.clone(), Vec::new()).unwrap();
-        let index = get_choice_index(&self.songs_filenames, fzf_choice.first().unwrap());
-        let song = self.get_song_with_only_filename(ss.get(index).unwrap());
-        self.push(&song)?;
-
-        Ok(())
-    }
-
     /// Dmenu prompt for selecting songs
     pub fn play_dmenu(&mut self) -> Result<()> {
         is_installed("dmenu")?;
@@ -178,27 +166,7 @@ impl Connection {
                 return Some(self.songs_filenames.get(i).unwrap().to_string());
             }
         }
-
         None
-
-        // Ok(filename.to_string())
-    }
-
-    /// Print status to stdout
-    pub fn status(&mut self) {
-        let current_song = self.conn.currentsong();
-        let status = self.conn.status().unwrap();
-
-        if current_song.is_ok() && status.state != State::Stop {
-            let song = current_song.unwrap();
-            if let Some(s) = song {
-                println!("{} - {}", s.artist.unwrap(), s.title.unwrap());
-            }
-        }
-        println!(
-            "volume: {}\trepeat: {}\trandom: {}\tsingle: {}\tconsume: {}",
-            status.volume, status.repeat, status.random, status.single, status.consume
-        );
     }
 
     /// Gives title of current playing song
