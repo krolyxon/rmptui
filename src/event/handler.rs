@@ -159,13 +159,20 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
                     // Delete highlighted song from the queue
                     KeyCode::Char('d') => {
-                        if app.queue_list.index >= app.queue_list.list.len() - 1
+                        if app.queue_list.index >= app.queue_list.list.len()
                             && app.queue_list.index != 0
                         {
                             app.queue_list.index -= 1;
                         }
 
                         app.conn.conn.delete(app.queue_list.index as u32)?;
+
+                        if app.queue_list.index >= app.queue_list.list.len().saturating_sub(1)
+                            && app.queue_list.index != 0
+                        {
+                            app.queue_list.index -= 1;
+                        }
+
                         app.update_queue();
                     }
 
