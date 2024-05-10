@@ -46,7 +46,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
 /// Draws the directory
 fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
-    let total_songs = app.conn.conn.stats().unwrap().songs.to_string();
+    let total_songs = app.conn.stats.songs.to_string();
 
     let rows = app.browser.filetree.iter().enumerate().map(|(i, (t, s))| {
         if t == "file" {

@@ -19,6 +19,7 @@ pub struct Connection {
     pub repeat: bool,
     pub random: bool,
     pub current_song: Song,
+    pub stats: mpd::Stats,
 }
 
 impl Connection {
@@ -43,6 +44,7 @@ impl Connection {
         let volume: u8 = status.volume as u8;
         let repeat = status.repeat;
         let random = status.random;
+        let stats = conn.stats().unwrap_or_default();
 
         let current_song = conn
             .currentsong()
@@ -58,6 +60,7 @@ impl Connection {
             repeat,
             random,
             current_song,
+            stats,
         })
     }
 
@@ -81,6 +84,7 @@ impl Connection {
             .currentsong()
             .unwrap_or_else(|_| Some(empty_song.clone()))
             .unwrap_or(empty_song);
+        let stats = self.conn.stats().unwrap_or_default();
 
         // Playback State
         match status.state {
@@ -103,7 +107,12 @@ impl Connection {
         // Random mode
         self.random = status.random;
 
+        // Current song
         self.current_song = current_song;
+
+        //
+
+        self.stats = stats;
     }
 
     /// Get progress ratio of current playing song
