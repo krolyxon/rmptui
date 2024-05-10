@@ -145,7 +145,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
 
 /// draws playing queue
 fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
-    let rows = app.queue_list.list.iter().map(|song| {
+    let rows = app.queue_list.list.iter().enumerate().map(|(i, song)| {
         // metadata
         let title = song.clone().title.unwrap_or_else(|| song.clone().file);
         let artist = song.clone().artist.unwrap_or_default().cyan();
@@ -175,7 +175,8 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
             Cell::from(time.to_string().magenta()),
         ]);
 
-        if song.file.contains(&app.conn.current_song.file) {
+        let pos = app.conn.current_song.place.unwrap_or_default().pos;
+        if i == pos as usize {
             row.magenta().bold()
         } else {
             row
