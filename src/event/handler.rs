@@ -188,6 +188,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         };
                         app.conn.conn.swap(current, next)?;
                         app.update_queue();
+                        app.conn.update_status();
                     }
 
                     // Swap highlighted song with previous one
@@ -201,6 +202,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         };
                         app.conn.conn.swap(current, prev)?;
                         app.update_queue();
+                        app.conn.update_status();
                     }
 
                     // go to top of list
