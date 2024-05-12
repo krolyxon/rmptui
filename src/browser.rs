@@ -50,7 +50,7 @@ impl FileBrowser {
         let mut file_vec: Vec<(String, String)> = vec![];
         let mut dir_vec: Vec<(String, String)> = vec![];
         for (t, f) in conn.conn.listfiles(self.path.as_str())?.into_iter() {
-            if t == "directory" {
+            if t == "directory" && !f.starts_with(".") {
                 dir_vec.push((t, f));
             } else if t == "file"
                 && Path::new(&f).has_extension(&[

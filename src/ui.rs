@@ -301,7 +301,7 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
     // Define the title
     let title = Block::default()
         .title(Title::from(state.red().bold()))
-        .title(Title::from(song.green().bold()))
+        .title(Title::from(song.green()))
         .title(Title::from(duration.cyan().bold()).alignment(Alignment::Right))
         .title(Title::from(modes_bottom).position(block::Position::Bottom))
         .borders(Borders::ALL);
