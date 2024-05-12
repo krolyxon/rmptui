@@ -175,9 +175,13 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
             Cell::from(time.to_string().magenta()),
         ]);
 
-        let pos = app.conn.current_song.place.unwrap_or_default().pos;
-        if i == pos as usize {
-            row.magenta().bold()
+        let place = app.conn.current_song.place;
+        if let Some(pos) = place {
+            if i == pos.pos as usize {
+                row.magenta().bold()
+            } else {
+                row
+            }
         } else {
             row
         }
