@@ -69,9 +69,11 @@ impl Connection {
         is_installed("dmenu")?;
         let ss: Vec<&str> = self.songs_filenames.iter().map(|x| x.as_str()).collect();
         let op = dmenu!(iter &ss; args "-p", "Choose a song: ", "-l", "30");
-        let index = get_choice_index(&self.songs_filenames, &op);
-        let song = self.get_song_with_only_filename(ss.get(index).unwrap());
-        self.push(&song)?;
+        let index = ss.iter().position(|s| s == &op);
+        if let Some(i) = index {
+            let song = self.get_song_with_only_filename(ss.get(i).unwrap());
+            self.push(&song)?;
+        }
         Ok(())
     }
 
@@ -235,16 +237,6 @@ impl Connection {
             self.conn.volume(cur - v).unwrap();
         }
     }
-}
-
-/// Gets the index of the string from the Vector
-fn get_choice_index(ss: &[String], selection: &str) -> usize {
-    let mut choice: usize = 0;
-    if let Some(index) = ss.iter().position(|s| s == selection) {
-        choice = index;
-    }
-
-    choice
 }
 
 /// Checks if given program is installed in your system
