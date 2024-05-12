@@ -12,9 +12,8 @@ pub type AppResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 /// Application
 #[derive(Debug)]
 pub struct App {
-    /// check if app is running
-    pub running: bool,
-    pub conn: Connection,
+    pub running: bool,                      // Check if app is running
+    pub conn: Connection,                   // Connection
     pub browser: FileBrowser,               // Directory browser
     pub queue_list: ContentList<Song>,      // Stores the current playing queue
     pub pl_list: ContentList<String>,       // Stores list of playlists
@@ -91,7 +90,6 @@ impl App {
         //     }
         // });
         conn.conn.queue().unwrap().into_iter().for_each(|x| {
-            // vec.push(x.title.unwrap());
             vec.push(x);
         });
     }

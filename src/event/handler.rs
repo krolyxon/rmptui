@@ -173,6 +173,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                             app.queue_list.index -= 1;
                         }
 
+                        app.conn.update_status();
                         app.update_queue();
                     }
 

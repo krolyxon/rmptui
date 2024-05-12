@@ -12,14 +12,16 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub type Error = Box<dyn std::error::Error>;
 
 fn main() -> AppResult<()> {
+    // Connection
     let env_host = env::var("MPD_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let env_port = env::var("MPD_PORT").unwrap_or_else(|_| "6600".to_string());
-    let mut app = App::builder(format!("{}:{}", env_host, env_port).as_str())?;
+    let url = format!("{}:{}", env_host, env_port);
+    let mut app = App::builder(&url)?;
 
+    // UI
     let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend)?;
     let events = EventHandler::new(1000);
-
     let mut tui = tui::Tui::new(terminal, events);
     tui.init()?;
 

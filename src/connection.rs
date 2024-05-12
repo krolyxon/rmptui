@@ -110,8 +110,7 @@ impl Connection {
         // Current song
         self.current_song = current_song;
 
-        //
-
+        // Stats
         self.stats = stats;
     }
 
