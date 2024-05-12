@@ -97,6 +97,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 if !app.queue_list.list.is_empty() {
                     app.conn.conn.next()?;
                     app.update_queue();
+                    app.conn.update_status();
                 }
             }
 
@@ -105,6 +106,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 if !app.queue_list.list.is_empty() {
                     app.conn.conn.prev()?;
                     app.update_queue();
+                    app.conn.update_status();
                 }
             }
 
