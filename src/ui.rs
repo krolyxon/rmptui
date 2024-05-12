@@ -343,6 +343,18 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_stateful_widget(list, layouts[0], &mut state);
 
     // Playlist viewer
+
+    // Handle if there are no playlists in the mpd database
+    if app.pl_list.list.is_empty() {
+        let title = Block::default()
+            .title(Title::from("No Playlists Found".red().bold()))
+            .title_alignment(Alignment::Center)
+            .borders(Borders::ALL);
+        frame.render_widget(Clear, area); //this clears out the background
+        frame.render_widget(title, area);
+        return;
+    }
+
     let pl_name = app.pl_list.list.get(app.pl_list.index).unwrap();
     let songs = app.conn.conn.playlist(pl_name).unwrap();
     let rows = songs.iter().map(|song| {
