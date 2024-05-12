@@ -58,18 +58,24 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Fast forward
             KeyCode::Char('f') => {
-                let place = app.conn.conn.status().unwrap().song.unwrap().pos;
-                let (pos, _) = app.conn.conn.status().unwrap().time.unwrap();
-                let pos = Duration::from_secs(pos.as_secs().wrapping_add(2));
-                app.conn.conn.seek(place, pos)?;
+                if !app.queue_list.list.is_empty() {
+                    let status = app.conn.conn.status().unwrap_or_default();
+                    let place = status.song.unwrap_or_default().pos;
+                    let (pos, _) = status.time.unwrap_or_default();
+                    let pos = Duration::from_secs(pos.as_secs().wrapping_add(2));
+                    app.conn.conn.seek(place, pos)?;
+                }
             }
 
             // backward
             KeyCode::Char('b') => {
-                let place = app.conn.conn.status().unwrap().song.unwrap().pos;
-                let (pos, _) = app.conn.conn.status().unwrap().time.unwrap();
-                let pos = Duration::from_secs(pos.as_secs().wrapping_add(2));
-                app.conn.conn.seek(place, pos)?;
+                if !app.queue_list.list.is_empty() {
+                    let status = app.conn.conn.status().unwrap_or_default();
+                    let place = status.song.unwrap_or_default().pos;
+                    let (pos, _) = status.time.unwrap_or_default();
+                    let pos = Duration::from_secs(pos.as_secs().wrapping_sub(2));
+                    app.conn.conn.seek(place, pos)?;
+                }
             }
 
             // Cycle through tabs
@@ -267,9 +273,11 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     // add to current playlist
                     KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right | KeyCode::Char(' ') => {
                         // app.update_queue();
-                        app.conn
-                            .load_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
-                        app.conn.update_status();
+                        if !app.pl_list.list.is_empty() {
+                            app.conn
+                                .load_playlist(app.pl_list.list.get(app.pl_list.index).unwrap())?;
+                            app.conn.update_status();
+                        }
                     }
                     _ => {}
                 }
