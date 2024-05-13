@@ -103,12 +103,6 @@ impl FileBrowser {
         if self.selected < self.filetree.len() - 1 {
             self.selected += 1;
         }
-
-        // if self.selected == self.filetree.len() - 1 {
-        //     self.selected = 0;
-        // } else {
-        //     self.selected += 1;
-        // }
     }
 
     /// Go to previous item in filetree
@@ -116,11 +110,6 @@ impl FileBrowser {
         if self.selected != 0 {
             self.selected -= 1;
         }
-        // if self.selected == 0 {
-        //     self.selected = self.filetree.len() - 1;
-        // } else {
-        //     self.selected -= 1;
-        // }
     }
 
     /// handles going back event

@@ -78,17 +78,6 @@ impl App {
     }
 
     pub fn get_queue(conn: &mut Connection, vec: &mut Vec<Song>) {
-        // conn.conn.queue().unwrap().into_iter().for_each(|x| {
-        //     if let Some(title) = x.title {
-        //         if let Some(artist) = x.artist {
-        //             vec.push(format!("{} - {}", artist, title));
-        //         } else {
-        //             vec.push(title)
-        //         }
-        //     } else {
-        //         vec.push(x.file)
-        //     }
-        // });
         conn.conn.queue().unwrap().into_iter().for_each(|x| {
             vec.push(x);
         });
@@ -295,13 +284,9 @@ impl App {
                 self.pl_newname_input = before_char_to_delete.chain(after_char_to_delete).collect();
                 self.move_cursor_left();
             } else if self.inputmode == InputMode::Editing {
-                // Getting all characters before the selected character.
                 let before_char_to_delete =
                     self.search_input.chars().take(from_left_to_current_index);
-                // Getting all characters after selected character.
                 let after_char_to_delete = self.search_input.chars().skip(current_index);
-                // Put all characters together except the selected one.
-                // By leaving the selected one out, it is forgotten and therefore deleted.
                 self.search_input = before_char_to_delete.chain(after_char_to_delete).collect();
                 self.move_cursor_left();
             }
