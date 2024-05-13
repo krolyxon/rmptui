@@ -121,11 +121,11 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
         Block::default()
             .title(format!("Song Browser: {}", app.browser.path.clone()).bold())
             .title(
-                Title::from(format!("Total Songs: {}", total_songs).bold().green())
+                Title::from(format!("Total Songs: {}", total_songs).green())
                     .alignment(Alignment::Center),
             )
             .title(
-                Title::from(format!("Volume: {}%", app.conn.volume).bold().green())
+                Title::from(format!("Volume: {}%", app.conn.volume).green())
                     .alignment(Alignment::Right),
             )
             .borders(Borders::ALL),
@@ -211,7 +211,7 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
                 format!("({} items)", app.queue_list.list.len()).bold(),
             ))
             .title(
-                Title::from(format!("Volume: {}%", app.conn.volume).bold().green())
+                Title::from(format!("Volume: {}%", app.conn.volume).green())
                     .alignment(Alignment::Right),
             )
             .borders(Borders::ALL),
