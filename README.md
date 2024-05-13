@@ -2,10 +2,7 @@
 A MPD client in Rust
 
 ## rmptui in action
-<video controls>
-  <source src="https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/rmptui-demo.webm" type="video/webm">
-  Your browser does not support the video tag.
-</video>
+https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/rmptui-demo.mp4
 
 ### Keys
 - `q` OR `Ctr+C` to quit
