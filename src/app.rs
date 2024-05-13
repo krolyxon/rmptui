@@ -12,12 +12,12 @@ pub type AppResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 /// Application
 #[derive(Debug)]
 pub struct App {
-    pub running: bool,                      // Check if app is running
-    pub conn: Connection,                   // Connection
-    pub browser: FileBrowser,               // Directory browser
-    pub queue_list: ContentList<Song>,      // Stores the current playing queue
-    pub pl_list: ContentList<String>,       // Stores list of playlists
-    pub selected_tab: SelectedTab,          // Used to switch between tabs
+    pub running: bool,                 // Check if app is running
+    pub conn: Connection,              // Connection
+    pub browser: FileBrowser,          // Directory browser
+    pub queue_list: ContentList<Song>, // Stores the current playing queue
+    pub pl_list: ContentList<String>,  // Stores list of playlists
+    pub selected_tab: SelectedTab,     // Used to switch between tabs
 
     // Search
     pub inputmode: InputMode,     // Defines input mode, Normal or Search
@@ -194,15 +194,6 @@ impl App {
                 browser.selected = 0;
             }
         } else {
-            // let list = conn
-            //     .songs_filenames
-            //     .iter()
-            //     .map(|f| f.as_str())
-            //     .collect::<Vec<&str>>();
-            // let (filename, _) = rust_fuzzy_search::fuzzy_search_sorted(&path, &list)
-            //     .get(0)
-            //     .unwrap()
-            //     .clone();
             let index = self
                 .queue_list
                 .list
@@ -212,12 +203,14 @@ impl App {
             if index.is_some() {
                 self.conn.conn.switch(index.unwrap() as u32)?;
             } else {
-                for filename in self.conn.songs_filenames.clone().iter() {
-                    if filename.contains(path) {
-                        let song = self.conn.get_song_with_only_filename(filename);
-                        self.conn.push(&song)?;
-                    }
-                }
+                let mut filename = format!("{}/{}", browser.path, path);
+
+                // Remove "./" from the beginning of filename
+                filename.remove(0);
+                filename.remove(0);
+
+                let song = self.conn.get_song_with_only_filename(&filename);
+                self.conn.push(&song)?;
 
                 // updating queue, to avoid multiple pushes of the same songs if we enter multiple times before the queue gets updated
                 self.update_queue();

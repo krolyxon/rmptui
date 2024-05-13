@@ -1,3 +1,4 @@
+use ratatui::prelude::*;
 use rmptui::app::App;
 use rmptui::app::AppResult;
 use rmptui::event::event::Event;
@@ -6,10 +7,6 @@ use rmptui::event::handler;
 use rmptui::tui;
 use std::env;
 use std::io;
-use ratatui::prelude::*;
-
-pub type Result<T> = core::result::Result<T, Error>;
-pub type Error = Box<dyn std::error::Error>;
 
 fn main() -> AppResult<()> {
     // Connection
@@ -26,7 +23,7 @@ fn main() -> AppResult<()> {
     tui.init()?;
 
     // initial directory read
-    app.browser.update_directory(&mut app.conn).unwrap();
+    app.browser.update_directory(&mut app.conn)?;
 
     while app.running {
         tui.draw(&mut app)?;
