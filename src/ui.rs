@@ -90,7 +90,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
             ]);
 
             if status {
-                row.magenta().bold()
+                row.bold()
             } else {
                 row
             }
@@ -168,17 +168,25 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
         let time = App::format_time(song.clone().duration.unwrap_or_else(|| Duration::new(0, 0)));
 
         let row = Row::new(vec![
-            Cell::from(artist),
-            Cell::from(track.green()),
-            Cell::from(title),
-            Cell::from(album.cyan()),
+            Cell::from(artist.clone()),
+            Cell::from(track.clone().green()),
+            Cell::from(title.clone()),
+            Cell::from(album.clone().cyan()),
             Cell::from(time.to_string().magenta()),
         ]);
 
         let place = app.conn.current_song.place;
         if let Some(pos) = place {
             if i == pos.pos as usize {
-                row.magenta().bold()
+                let row = Row::new(vec![
+                    Cell::from(format!("> {}", artist)),
+                    Cell::from(format!(" {}", track).green()),
+                    Cell::from(format!(" {}", title)),
+                    Cell::from(album.cyan()),
+                    Cell::from(time.to_string().magenta()),
+                ]);
+
+                row
             } else {
                 row
             }

@@ -160,6 +160,7 @@ impl App {
         }
 
         self.update_queue();
+        self.conn.update_status();
         Ok(())
     }
 
