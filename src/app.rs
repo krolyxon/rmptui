@@ -44,7 +44,9 @@ impl App {
         let mut conn = Connection::new(addrs).unwrap();
         let mut queue_list = ContentList::new();
         let mut pl_list = ContentList::new();
+
         pl_list.list = Self::get_playlist(&mut conn.conn)?;
+        pl_list.list.sort();
 
         let append_list = Self::get_append_list(&mut conn.conn)?;
         Self::get_queue(&mut conn, &mut queue_list.list);
