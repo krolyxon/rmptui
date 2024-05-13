@@ -30,6 +30,11 @@ impl<T> ContentList<T> {
     pub fn reset_index(&mut self) {
         self.index = 0;
     }
+
+    /// Returns the self.list[index] item
+    pub fn get_item_at_current_index(&mut self) -> &T {
+        self.list.get(self.index).unwrap()
+    }
 }
 
 impl<T> Default for ContentList<T> {

@@ -355,7 +355,7 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
         return;
     }
 
-    let pl_name = app.pl_list.list.get(app.pl_list.index).unwrap();
+    let pl_name = app.pl_list.get_item_at_current_index();
     let songs = app.conn.conn.playlist(pl_name).unwrap();
     let rows = songs.iter().map(|song| {
         let title = song.clone().title.unwrap_or_default().cyan();

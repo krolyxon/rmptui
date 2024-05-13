@@ -16,7 +16,7 @@ pub fn handle_pl_rename_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()
         }
         KeyCode::Enter => {
             app.conn.conn.pl_rename(
-                app.pl_list.list.get(app.pl_list.index).unwrap(),
+                app.pl_list.get_item_at_current_index(),
                 &app.pl_newname_input,
             )?;
             app.pl_list.list = App::get_playlist(&mut app.conn.conn)?;

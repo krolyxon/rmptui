@@ -13,14 +13,12 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
         KeyCode::Char('k') | KeyCode::Up => app.append_list.prev(),
 
         KeyCode::Enter => {
-            let pl_index = app.append_list.index;
-            let pl_name = &app.append_list.list.get(pl_index).unwrap();
+            // name of highlighted playlist in append list
+            let pl_name = &app.append_list.get_item_at_current_index();
 
-            let s_index: usize;
             match app.selected_tab {
                 SelectedTab::Queue => {
-                    s_index = app.queue_list.index;
-                    let short_path = &app.queue_list.list.get(s_index).unwrap().file;
+                    let short_path = &app.queue_list.get_item_at_current_index().file;
 
                     if let Some(full_path) = app.conn.get_full_path(short_path) {
                         let song = app.conn.get_song_with_only_filename(&full_path);
@@ -68,7 +66,23 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                         }
                     }
                 }
-                _ => {}
+
+                SelectedTab::Playlists => {
+                    let playlist_name = app.pl_list.get_item_at_current_index();
+                    if *pl_name == "Current Playlist" {
+                        app.conn.load_playlist(playlist_name)?;
+                        app.update_queue();
+                    } else {
+                        let songs = app.conn.conn.playlist(playlist_name)?;
+                        for song in songs {
+                            // We ignore the Err() since there could be songs in playlists, which do not exist in the db anymore.
+                            // So instead of panicking, we just ignore if the song does not exists
+                            app.conn
+                                .add_to_playlist(*pl_name, &song)
+                                .unwrap_or_else(|_| {});
+                        }
+                    }
+                }
             }
 
             // hide the playlist popup
