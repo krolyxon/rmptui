@@ -64,6 +64,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     let (pos, _) = status.time.unwrap_or_default();
                     let pos = Duration::from_secs(pos.as_secs().wrapping_add(2));
                     app.conn.conn.seek(place, pos)?;
+                    app.conn.update_status();
                 }
             }
 
@@ -75,6 +76,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     let (pos, _) = status.time.unwrap_or_default();
                     let pos = Duration::from_secs(pos.as_secs().wrapping_sub(2));
                     app.conn.conn.seek(place, pos)?;
+                    app.conn.update_status();
                 }
             }
 
