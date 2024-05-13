@@ -34,6 +34,10 @@ A MPD client in Rust
 - `g` to go to top of list
 - `G` to go to bottom of list
 
+### Prerequisites
+- [MPD](https://wiki.archlinux.org/title/Music_Player_Daemon) installed and configured.
+- [dmenu](https://tools.suckless.org/dmenu/) (optional)
+
 ### TODO
 - [x] fix performance issues
 - [x] improvements on queue control

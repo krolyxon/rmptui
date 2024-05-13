@@ -66,14 +66,16 @@ impl Connection {
 
     /// Dmenu prompt for selecting songs
     pub fn play_dmenu(&mut self) -> Result<()> {
-        is_installed("dmenu")?;
-        let ss: Vec<&str> = self.songs_filenames.iter().map(|x| x.as_str()).collect();
-        let op = dmenu!(iter &ss; args "-p", "Choose a song: ", "-l", "30");
-        let index = ss.iter().position(|s| s == &op);
-        if let Some(i) = index {
-            let song = self.get_song_with_only_filename(ss.get(i).unwrap());
-            self.push(&song)?;
+        if is_installed("dmenu") {
+            let ss: Vec<&str> = self.songs_filenames.iter().map(|x| x.as_str()).collect();
+            let op = dmenu!(iter &ss; args "-p", "Choose a song: ", "-l", "30");
+            let index = ss.iter().position(|s| s == &op);
+            if let Some(i) = index {
+                let song = self.get_song_with_only_filename(ss.get(i).unwrap());
+                self.push(&song)?;
+            }
         }
+
         Ok(())
     }
 
@@ -240,15 +242,11 @@ impl Connection {
 }
 
 /// Checks if given program is installed in your system
-fn is_installed(ss: &str) -> Result<()> {
+fn is_installed(ss: &str) -> bool {
     let output = Command::new("which")
         .arg(ss)
         .output()
         .expect("Failed to execute command");
-    if output.status.success() {
-        Ok(())
-    } else {
-        let err = format!("{} not installed", ss);
-        Err(err.into())
-    }
+
+    output.status.success()
 }
