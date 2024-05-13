@@ -2,7 +2,7 @@
 A MPD client in Rust
 
 ## rmptui in action
-https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/rmptui-demo.mp4
+![](https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/ss.png)
 
 ### Keys
 - `q` OR `Ctr+C` to quit
