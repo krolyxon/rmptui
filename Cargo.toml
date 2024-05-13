@@ -1,7 +1,10 @@
 [package]
 name = "rmptui"
-version = "0.1.0"
+authors = ["krolyxon"]
+version = "0.1.1"
 edition = "2021"
+repository = "https://github.com/krolyxon/rmptui"
+keywords = ["rmptui", "mpd", "music", "cli", "tui", "client"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

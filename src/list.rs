@@ -31,7 +31,7 @@ impl<T> ContentList<T> {
         self.index = 0;
     }
 
-    /// Returns the self.list[index] item
+    /// Returns the self.list[self.index] item
     pub fn get_item_at_current_index(&mut self) -> &T {
         self.list.get(self.index).unwrap()
     }
