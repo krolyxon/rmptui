@@ -25,7 +25,10 @@ pub struct Connection {
 impl Connection {
     /// Create a new connection
     pub fn new(addrs: &str) -> Result<Self> {
-        let mut conn = Client::connect(addrs).unwrap();
+        let mut conn = Client::connect(addrs).unwrap_or_else(|_| {
+            eprintln!("Error connecting to mpd server, Make sure mpd is running");
+            std::process::exit(1);
+        });
 
         let empty_song = Song {
             file: "No Song playing or in Queue".to_string(),
