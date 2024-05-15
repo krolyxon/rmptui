@@ -1,5 +1,9 @@
-## rmptui (Rust Music Player TUI(💀))
-A MPD client in Rust
+## rmptui - A MPD client in Rust
+![LOC](https://tokei.rs/b1/github/krolyxon/rmptui?category=code)
+![Release](https://img.shields.io/github/v/release/krolyxon/rmptui?color=%23c694ff)
+[![GitHub Downloads](https://img.shields.io/github/downloads/krolyxon/rmptui/total.svg?label=GitHub%20downloads)](https://github.com/krolyxon/rmptui/releases)
+
+rmptui is a minimal tui mpd client made with rust.
 
 ## rmptui in action
 ![](https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/ss.png)
