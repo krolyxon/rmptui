@@ -1,6 +1,10 @@
 [package]
 name = "rmptui"
 authors = ["krolyxon"]
+description = """
+a fast and minimal tui mpd client
+"""
+readme = "README.md"
 version = "0.1.2"
 edition = "2021"
 repository = "https://github.com/krolyxon/rmptui"
@@ -11,6 +15,8 @@ keywords = ["rmptui", "mpd", "music", "cli", "tui", "client"]
 [dependencies]
 mpd = "0.1.0"
 simple-dmenu = "0.1.0"
-ratatui = "0.26.2"
+ratatui = { version = "0.26.2", default-features = false, features = [
+    'crossterm',
+] }
 crossterm = "0.27.0"
 rust-fuzzy-search = "0.1.1"
