@@ -114,7 +114,8 @@ impl App {
 
                 let mut status = false;
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-                    if song.file.contains(file) {
+                    let song_path = song.file.split("/").last().unwrap_or_default();
+                    if song_path.eq(file) {
                         self.conn.conn.delete(i as u32).unwrap();
                         status = true;
                     }
@@ -145,7 +146,7 @@ impl App {
                     .to_string();
 
                 for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-                    if song.file.contains(&file) {
+                    if song.file.eq(&file) {
                         self.conn.conn.delete(i as u32).unwrap();
                         if self.queue_list.index == self.queue_list.list.len() - 1
                             && self.queue_list.index != 0
@@ -186,14 +187,10 @@ impl App {
                 browser.selected = 0;
             }
         } else {
-            let index = self
-                .queue_list
-                .list
-                .iter()
-                .position(|x| {
-                    let file = x.file.split("/").last().unwrap();
-                    file.eq(path)
-                });
+            let index = self.queue_list.list.iter().position(|x| {
+                let file = x.file.split("/").last().unwrap_or_default();
+                file.eq(path)
+            });
 
             if index.is_some() {
                 self.conn.conn.switch(index.unwrap() as u32)?;
