@@ -76,7 +76,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
 
             let mut status: bool = false;
             for sn in app.queue_list.list.iter() {
-                let file = sn.file.split("/").last().unwrap();
+                let file = sn.file.split("/").last().unwrap_or_default();
                 if file.eq(s) {
                     status = true;
                 }
