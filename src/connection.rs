@@ -1,11 +1,9 @@
+use crate::app::AppResult;
 use mpd::song::Song;
 use mpd::{Client, State};
 use simple_dmenu::dmenu;
 use std::process::Command;
 use std::time::Duration;
-
-pub type Result<T> = core::result::Result<T, Error>;
-pub type Error = Box<dyn std::error::Error>;
 
 #[derive(Debug)]
 /// struct storing the mpd Client related stuff
@@ -24,7 +22,7 @@ pub struct Connection {
 
 impl Connection {
     /// Create a new connection
-    pub fn new(addrs: &str) -> Result<Self> {
+    pub fn builder(addrs: &str) -> AppResult<Self> {
         let mut conn = Client::connect(addrs).unwrap_or_else(|_| {
             eprintln!("Error connecting to mpd server, Make sure mpd is running");
             std::process::exit(1);
@@ -36,8 +34,7 @@ impl Connection {
         };
 
         let songs_filenames: Vec<String> = conn
-            .listall()
-            .unwrap()
+            .listall()?
             .into_iter()
             .map(|x| x.file)
             .collect();
@@ -68,7 +65,7 @@ impl Connection {
     }
 
     /// Dmenu prompt for selecting songs
-    pub fn play_dmenu(&mut self) -> Result<()> {
+    pub fn play_dmenu(&mut self) -> AppResult<()> {
         if is_installed("dmenu") {
             let ss: Vec<&str> = self.songs_filenames.iter().map(|x| x.as_str()).collect();
             let op = dmenu!(iter &ss; args "-p", "Choose a song: ", "-l", "30");
@@ -94,11 +91,11 @@ impl Connection {
         let stats = self.conn.stats().unwrap_or_default();
 
         // Playback State
-        match status.state {
-            State::Stop => self.state = "Stopped".to_string(),
-            State::Play => self.state = "Playing".to_string(),
-            State::Pause => self.state = "Paused".to_string(),
-        }
+        self.state = match status.state {
+            State::Stop => "Stopped".to_string(),
+            State::Play => "Playing".to_string(),
+            State::Pause => "Paused".to_string(),
+        };
 
         // Progress
         let (elapsed, total) = status.time.unwrap_or_default();
@@ -137,7 +134,7 @@ impl Connection {
     }
 
     /// push the given song to queue
-    pub fn push(&mut self, song: &Song) -> Result<()> {
+    pub fn push(&mut self, song: &Song) -> AppResult<()> {
         if self.conn.queue().unwrap().is_empty() {
             self.conn.push(song).unwrap();
             self.conn.play().unwrap();
@@ -154,14 +151,14 @@ impl Connection {
     }
 
     /// Push all songs of a playlist into queue
-    pub fn load_playlist(&mut self, playlist: &str) -> Result<()> {
+    pub fn load_playlist(&mut self, playlist: &str) -> AppResult<()> {
         self.conn.load(playlist, ..)?;
         self.conn.play()?;
         Ok(())
     }
 
     /// Add given song to playlist
-    pub fn add_to_playlist(&mut self, playlist: &str, song: &Song) -> Result<()> {
+    pub fn add_to_playlist(&mut self, playlist: &str, song: &Song) -> AppResult<()> {
         self.conn.pl_push(playlist, song)?;
         Ok(())
     }
@@ -185,7 +182,7 @@ impl Connection {
     }
 
     /// Gives title of current playing song
-    pub fn now_playing(&mut self) -> Result<Option<String>> {
+    pub fn now_playing(&mut self) -> AppResult<Option<String>> {
         if let Some(s) = &self.current_song.title {
             if let Some(a) = &self.current_song.artist {
                 Ok(Some(format!("\"{}\" By {}", s, a)))
@@ -210,20 +207,14 @@ impl Connection {
 
     /// Toggle Repeat mode
     pub fn toggle_repeat(&mut self) {
-        if self.conn.status().unwrap().repeat {
-            self.conn.repeat(false).unwrap();
-        } else {
-            self.conn.repeat(true).unwrap();
-        }
+        let mode = self.conn.status().unwrap().repeat;
+        self.conn.repeat(!mode).unwrap();
     }
 
     /// Toggle random mode
     pub fn toggle_random(&mut self) {
-        if self.conn.status().unwrap().random {
-            self.conn.random(false).unwrap();
-        } else {
-            self.conn.random(true).unwrap();
-        }
+        let mode = self.conn.status().unwrap().random;
+        self.conn.random(!mode).unwrap();
     }
 
     // Volume controls

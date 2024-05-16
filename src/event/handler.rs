@@ -137,8 +137,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.conn.songs_filenames = app
                     .conn
                     .conn
-                    .listall()
-                    .unwrap()
+                    .listall()?
                     .into_iter()
                     .map(|x| x.file)
                     .collect();
