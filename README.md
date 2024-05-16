@@ -13,7 +13,7 @@ rmptui is a minimal tui mpd client made with rust.
 | ---                       | ---                                             |
 | `q`/`Ctr+C`               | Quit                                            |
 | `p`                       | Toggle pause                                    |
-| `+`/'='                   | Increase volume                                 |
+| `+`/`=`                   | Increase volume                                 |
 | `-`                       | Decrease volume                                 |
 | `D`                       | Get dmenu prompt                                |
 | `j`/`Down`                | Scroll down                                     |
