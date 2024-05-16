@@ -119,7 +119,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
 
             // Volume controls
-            KeyCode::Char('=') => {
+            KeyCode::Char('=') | KeyCode::Char('+') => {
                 app.conn.inc_volume(2);
                 app.conn.update_status();
             }
