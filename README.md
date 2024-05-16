@@ -9,34 +9,36 @@ rmptui is a minimal tui mpd client made with rust.
 ![](https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/ss.png)
 
 ### Keys
-- `q` OR `Ctr+C` to quit
-- `p` to toggle pause
-- `+` to increase volume
-- `-` to decrease volume
-- `D` to get dmenu prompt
-- `j` OR `Down` to scroll down
-- `k` OR `Up` to scroll up
-- `J` to swap highlighted song with next one
-- `K` to swap highlighted song with previous one
-- `l` OR `Right` add song to playlist or go inside the directory
-- `h` OR `Left` to go back to previous directory
-- `Tab` to cycle through tabs
-- `1` to go to queue
-- `2` to go to directory browser
-- `3` to go to playlists view
-- `Enter` OR `l` OR `Right` to add song/playlist to current playlist
-- `a` to append the song to current playing queue
-- `Space`/`BackSpace` to delete the highlighted song from queue
-- `f` to go forwards
-- `b` to go backwards
-- `>` to play next song from queue
-- `<` to play previous song from queue
-- `U` to update the MPD database
-- `r` to toggle repeat
-- `z` to toggle random
-- `/` to search
-- `g` to go to top of list
-- `G` to go to bottom of list
+| Key | Action |
+| --- | --- |
+| `q` OR `Ctr+C` | Quit |
+| `p` | Toggle pause |
+| `+` | Increase volume |
+| `-` | Decrease volume |
+| `D` | Get dmenu prompt |
+| `j` OR `Down` | Scroll down |
+| `k` OR `Up` | Scroll up |
+| `J` | Swap highlighted song with next one |
+| `K` | Swap highlighted song with previous one |
+| `l` OR `Right` | Add song to playlist or go inside the directory |
+| `h` OR `Left` | Go back to previous directory |
+| `Tab` | Cycle through tabs |
+| `1` | Go to queue |
+| `2` | Go to directory browser |
+| `3` | Go to playlists view |
+| `Enter` OR `l` OR `Right` | Add song/playlist to current playlist |
+| `a` | Append the song to current playing queue |
+| `Space`/`BackSpace` | Delete the highlighted song from queue |
+| `f` | Go forwards |
+| `b` | Go backwards |
+| `>` | Play next song from queue |
+| `<` | Play previous song from queue |
+| `U` | Update the MPD database |
+| `r` | Toggle repeat |
+| `z` | Toggle random |
+| `/` | Search |
+| `g` | Go to top of list |
+| `G` | Go to bottom of list |
 
 ### Prerequisites
 - [MPD](https://wiki.archlinux.org/title/Music_Player_Daemon) installed and configured.
