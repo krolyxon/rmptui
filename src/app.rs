@@ -190,7 +190,10 @@ impl App {
                 .queue_list
                 .list
                 .iter()
-                .position(|x| x.file.contains(path));
+                .position(|x| {
+                    let file = x.file.split("/").last().unwrap();
+                    file.eq(path)
+                });
 
             if index.is_some() {
                 self.conn.conn.switch(index.unwrap() as u32)?;
