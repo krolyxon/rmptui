@@ -41,7 +41,7 @@ pub enum SelectedTab {
 
 impl App {
     pub fn builder(addrs: &str) -> AppResult<Self> {
-        let mut conn = Connection::new(addrs).unwrap();
+        let mut conn = Connection::builder(addrs)?;
         let mut queue_list = ContentList::new();
         let mut pl_list = ContentList::new();
 
