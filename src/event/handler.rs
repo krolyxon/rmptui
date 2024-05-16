@@ -155,7 +155,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
 
             // Add or Remove from Current Playlist
-            KeyCode::Char(' ') | KeyCode::Backspace => {
+            KeyCode::Char(' ') => {
                 app.handle_add_or_remove_from_current_playlist()?;
             }
             _ => {}

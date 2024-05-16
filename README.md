@@ -28,7 +28,7 @@ rmptui is a minimal tui mpd client made with rust.
 | `3`                       | Go to playlists view                            |
 | `Enter`/`l`/`Right`       | Add song/playlist to current playlist           |
 | `a`                       | Append the song to current playing queue        |
-| `Space`/`BackSpace`       | Delete the highlighted song from queue          |
+| `Space`                   | Delete the highlighted song from queue          |
 | `f`                       | Go forwards                                     |
 | `b`                       | Go backwards                                    |
 | `>`                       | Play next song from queue                       |
