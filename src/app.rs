@@ -110,24 +110,38 @@ impl App {
     pub fn handle_add_or_remove_from_current_playlist(&mut self) -> AppResult<()> {
         match self.selected_tab {
             SelectedTab::DirectoryBrowser => {
-                let (_, file) = self.browser.filetree.get(self.browser.selected).unwrap();
+                let (content_type, content) =
+                    self.browser.filetree.get(self.browser.selected).unwrap();
+                if content_type == "directory" {
+                    let file = format!("{}/{}", self.browser.path, content);
+                    let songs = self.conn.conn.listfiles(&file).unwrap_or_default();
+                    for (t, f) in songs.iter() {
+                        if t == "file" {
+                            if let Some(full_path) = &self.conn.get_full_path(f) {
+                                let song = self.conn.get_song_with_only_filename(full_path);
+                                self.conn.conn.push(&song)?;
+                            }
+                        }
+                    }
+                } else if content_type == "file" {
+                    let mut status = false;
+                    for (i, song) in self.queue_list.list.clone().iter().enumerate() {
+                        let song_path = song.file.split("/").last().unwrap_or_default();
+                        if song_path.eq(content) {
+                            self.conn.conn.delete(i as u32).unwrap();
+                            status = true;
+                        }
+                    }
 
-                let mut status = false;
-                for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-                    let song_path = song.file.split("/").last().unwrap_or_default();
-                    if song_path.eq(file) {
-                        self.conn.conn.delete(i as u32).unwrap();
-                        status = true;
+                    if !status {
+                        if let Some(full_path) = &self.conn.get_full_path(content) {
+                            let song = self.conn.get_song_with_only_filename(full_path);
+                            self.conn.conn.push(&song)?;
+                        }
                     }
                 }
 
-                if !status {
-                    if let Some(full_path) = &self.conn.get_full_path(file) {
-                        let song = self.conn.get_song_with_only_filename(full_path);
-                        self.conn.conn.push(&song)?;
-                    }
-                }
-
+                // Highlight next row if possible
                 if self.browser.selected != self.browser.filetree.len() - 1 {
                     self.browser.selected += 1;
                 }
