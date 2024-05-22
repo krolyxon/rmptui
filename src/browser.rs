@@ -62,10 +62,12 @@ impl FileBrowser {
             }
         }
 
-
-        // Add metadata
+        dir_vec.sort_by(|a, b| a.0.cmp(&b.0));
+        file_vec.sort_by(|a, b| a.0.cmp(&b.0));
         dir_vec.extend(file_vec);
         self.filetree = dir_vec;
+
+        // Add metadata
         self.songs.clear();
         for (t, song) in self.filetree.iter() {
             if t == "file" {
@@ -127,8 +129,6 @@ impl FileBrowser {
         Ok(())
     }
 }
-
-
 
 impl Default for FileBrowser {
     fn default() -> Self {
