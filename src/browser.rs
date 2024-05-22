@@ -62,8 +62,19 @@ impl FileBrowser {
             }
         }
 
-        dir_vec.sort_by(|a, b| a.0.cmp(&b.0));
-        file_vec.sort_by(|a, b| a.0.cmp(&b.0));
+        // dir_vec.sort_by(|a, b| a.1.cmp(&b.1));
+        dir_vec.sort_by(|a, b| {
+            let num_a = a.1.parse::<u32>().unwrap_or(u32::MAX);
+            let num_b = b.1.parse::<u32>().unwrap_or(u32::MAX);
+            num_a.cmp(&num_b).then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
+        });
+
+        file_vec.sort_by(|a, b| {
+            let num_a = a.1.parse::<u32>().unwrap_or(u32::MAX);
+            let num_b = b.1.parse::<u32>().unwrap_or(u32::MAX);
+            num_a.cmp(&num_b).then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
+        });
+
         dir_vec.extend(file_vec);
         self.filetree = dir_vec;
 
