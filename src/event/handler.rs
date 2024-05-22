@@ -33,10 +33,16 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             // Playback controls
             // Toggle Pause
-            KeyCode::Char('p') => app.conn.toggle_pause(),
+            KeyCode::Char('p') => {
+                app.conn.toggle_pause();
+                app.conn.update_status();
+            }
 
             // Pause
-            KeyCode::Char('s') => app.conn.pause(),
+            KeyCode::Char('s') => {
+                app.conn.pause();
+                app.conn.update_status();
+            }
 
             // Toggle rpeat
             KeyCode::Char('r') => {
@@ -51,7 +57,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             }
 
             // Dmenu prompt
-            KeyCode::Char('D') => app.conn.play_dmenu()?,
+            KeyCode::Char('D') => {
+                app.conn.play_dmenu()?;
+                app.conn.update_status();
+            }
 
             // add to queue
             KeyCode::Char('a') => app.playlist_popup = true,
