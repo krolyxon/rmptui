@@ -18,6 +18,12 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
 
             match app.selected_tab {
                 SelectedTab::Queue => {
+                    // Just exit out the menu if no item is selected in the Queue
+                    if app.queue_list.list.is_empty() {
+                        app.playlist_popup = false;
+                        return Ok(());
+                    }
+
                     let short_path = &app.queue_list.get_item_at_current_index().file;
 
                     if let Some(full_path) = app.conn.get_full_path(short_path) {
