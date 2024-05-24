@@ -66,13 +66,17 @@ impl FileBrowser {
         dir_vec.sort_by(|a, b| {
             let num_a = a.1.parse::<u32>().unwrap_or(u32::MAX);
             let num_b = b.1.parse::<u32>().unwrap_or(u32::MAX);
-            num_a.cmp(&num_b).then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
+            num_a
+                .cmp(&num_b)
+                .then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
         });
 
         file_vec.sort_by(|a, b| {
             let num_a = a.1.parse::<u32>().unwrap_or(u32::MAX);
             let num_b = b.1.parse::<u32>().unwrap_or(u32::MAX);
-            num_a.cmp(&num_b).then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
+            num_a
+                .cmp(&num_b)
+                .then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
         });
 
         dir_vec.extend(file_vec);
@@ -128,9 +132,11 @@ impl FileBrowser {
     /// handles going back event
     pub fn handle_go_back(&mut self, conn: &mut Connection) -> AppResult<()> {
         if self.prev_path != "." {
-            let r = self.path.rfind('/').unwrap();
-            self.path = self.path.as_str()[..r].to_string();
-            self.update_directory(conn)?;
+            let r = self.path.rfind('/');
+            if let Some(r) = r {
+                self.path = self.path.as_str()[..r].to_string();
+                self.update_directory(conn)?;
+            }
         } else {
             self.path = self.prev_path.clone();
             self.update_directory(conn)?;
