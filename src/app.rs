@@ -117,10 +117,14 @@ impl App {
                     let songs = self.conn.conn.listfiles(&file).unwrap_or_default();
                     for (t, f) in songs.iter() {
                         if t == "file" {
-                            if let Some(full_path) = &self.conn.get_full_path(f) {
-                                let song = self.conn.get_song_with_only_filename(full_path);
-                                self.conn.conn.push(&song)?;
-                            }
+                            let path = self.browser.prev_path.to_string()
+                                + "/"
+                                + self.browser.path.as_str()
+                                + "/"
+                                + f;
+                            let full_path = path.strip_prefix("./").unwrap_or_else(|| "");
+                            let song = self.conn.get_song_with_only_filename(full_path);
+                            self.conn.conn.push(&song)?;
                         }
                     }
                 } else if content_type == "file" {
@@ -134,10 +138,15 @@ impl App {
                     }
 
                     if !status {
-                        if let Some(full_path) = &self.conn.get_full_path(content) {
-                            let song = self.conn.get_song_with_only_filename(full_path);
-                            self.conn.conn.push(&song)?;
-                        }
+                        let path = self.browser.prev_path.to_string()
+                            + "/"
+                            + self.browser.path.as_str()
+                            + "/"
+                            + content;
+                        let full_path = path.strip_prefix("./").unwrap_or_else(|| "");
+
+                        let song = self.conn.get_song_with_only_filename(full_path);
+                        self.conn.conn.push(&song)?;
                     }
                 }
 
