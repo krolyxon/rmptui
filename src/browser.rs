@@ -89,9 +89,10 @@ impl FileBrowser {
                 let v = conn
                     .conn
                     .lsinfo(Song {
-                        file: conn
-                            .get_full_path(song)
-                            .unwrap_or_else(|| "Not a song".to_string()),
+                        file: (self.path.clone() + "/" + song)
+                            .strip_prefix("./")
+                            .unwrap_or_else(|| "")
+                            .to_string(),
                         ..Default::default()
                     })
                     .unwrap_or_else(|_| {
