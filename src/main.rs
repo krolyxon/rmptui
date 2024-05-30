@@ -25,6 +25,11 @@ fn main() -> AppResult<()> {
     // initial directory read
     app.browser.update_directory(&mut app.conn)?;
 
+    // initially set the queue's highlighted item to the current playing item
+    if let Ok(item) = app.conn.conn.currentsong() {
+        app.queue_list.index = item.unwrap_or_default().place.unwrap_or_default().pos as usize;
+    }
+
     while app.running {
         tui.draw(&mut app)?;
         match tui.events.next()? {
