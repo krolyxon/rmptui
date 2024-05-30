@@ -1,6 +1,6 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
-use crate::browser::FileBrowser;
+use crate::browser::{FileBrowser, FileExtension};
 use crate::connection::Connection;
 use crate::list::ContentList;
 use crate::ui::InputMode;
@@ -117,14 +117,15 @@ impl App {
                     let songs = self.conn.conn.listfiles(&file).unwrap_or_default();
                     for (t, f) in songs.iter() {
                         if t == "file" {
-                            let path = self.browser.prev_path.to_string()
-                                + "/"
-                                + self.browser.path.as_str()
-                                + "/"
-                                + f;
-                            let full_path = path.strip_prefix("./").unwrap_or_else(|| "");
-                            let song = self.conn.get_song_with_only_filename(full_path);
-                            self.conn.conn.push(&song)?;
+                            if Path::new(&f).has_extension(&[
+                                "mp3", "ogg", "flac", "m4a", "wav", "aac", "opus", "ape", "wma",
+                                "mpc", "aiff", "dff", "mp2", "mka",
+                            ]) {
+                                let path = file.clone() + "/" + f;
+                                let full_path = path.strip_prefix("./").unwrap_or_else(|| "");
+                                let song = self.conn.get_song_with_only_filename(&full_path);
+                                self.conn.conn.push(&song)?;
+                            }
                         }
                     }
                 } else if content_type == "file" {
@@ -143,7 +144,7 @@ impl App {
                             + self.browser.path.as_str()
                             + "/"
                             + content;
-                        let full_path = path.strip_prefix("./").unwrap_or_else(|| "");
+                        let full_path = path.strip_prefix("././").unwrap_or_else(|| "");
 
                         let song = self.conn.get_song_with_only_filename(full_path);
                         self.conn.conn.push(&song)?;
