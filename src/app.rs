@@ -139,15 +139,17 @@ impl App {
                     }
 
                     if !status {
-                        let path = self.browser.prev_path.to_string()
-                            + "/"
-                            + self.browser.path.as_str()
-                            + "/"
-                            + content;
-                        let full_path = path.strip_prefix("././").unwrap_or_else(|| "");
+                        let mut filename = format!("{}/{}", self.browser.path, content);
 
-                        let song = self.conn.get_song_with_only_filename(full_path);
+                        // Remove "./" from the beginning of filename
+                        filename.remove(0);
+                        filename.remove(0);
+
+                        let song = self.conn.get_song_with_only_filename(&filename);
                         self.conn.conn.push(&song)?;
+
+                        // updating queue, to avoid multiple pushes of the same songs if we enter multiple times before the queue gets updated
+                        self.update_queue();
                     }
                 }
 
