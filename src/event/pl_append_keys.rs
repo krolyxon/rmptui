@@ -24,16 +24,15 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                         return Ok(());
                     }
 
-                    let short_path = &app.queue_list.get_item_at_current_index().file;
-
-                    if let Some(full_path) = app.conn.get_full_path(short_path) {
-                        let song = app.conn.get_song_with_only_filename(&full_path);
-
-                        if *pl_name == "Current Playlist" {
-                            app.conn.conn.push(&song)?;
-                            app.update_queue();
-                        } else {
-                            app.conn.add_to_playlist(pl_name, &song)?;
+                    if let Ok(songs) = app.conn.conn.songs(app.queue_list.index as u32) {
+                        let option_song = songs.first();
+                        if let Some(song) = option_song {
+                            if *pl_name == "Current Playlist" {
+                                app.conn.conn.push(&song)?;
+                                app.update_queue();
+                            } else {
+                                app.conn.add_to_playlist(pl_name, &song)?;
+                            }
                         }
                     }
                 }
