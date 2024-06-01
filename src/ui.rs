@@ -126,7 +126,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
                     .alignment(Alignment::Center),
             )
             .title(
-                Title::from(format!("Volume: {}%", app.conn.volume).green())
+                Title::from(format!("Volume: {}%", app.conn.status.volume).green())
                     .alignment(Alignment::Right),
             )
             .borders(Borders::ALL),
@@ -220,7 +220,7 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
                 format!("({} items)", app.queue_list.list.len()).bold(),
             ))
             .title(
-                Title::from(format!("Volume: {}%", app.conn.volume).green())
+                Title::from(format!("Volume: {}%", app.conn.status.volume).green())
                     .alignment(Alignment::Right),
             )
             .borders(Borders::ALL),
@@ -280,17 +280,17 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
     // Get the current modes
     let mut modes_bottom: String = String::new();
     // we do this to check if at least one mode is enabled so we can push "[]"
-    if app.conn.repeat | app.conn.random {
+    if app.conn.status.repeat | app.conn.status.random {
         modes_bottom.push('r');
     }
 
     if !modes_bottom.is_empty() {
         modes_bottom.clear();
         modes_bottom.push('[');
-        if app.conn.repeat {
+        if app.conn.status.repeat {
             modes_bottom.push('r');
         }
-        if app.conn.random {
+        if app.conn.status.random {
             modes_bottom.push('z');
         }
         modes_bottom.push(']');
