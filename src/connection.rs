@@ -18,6 +18,7 @@ pub struct Connection {
     pub random: bool,
     pub current_song: Song,
     pub stats: mpd::Stats,
+    pub status: mpd::Status,
 }
 
 impl Connection {
@@ -61,6 +62,7 @@ impl Connection {
             random,
             current_song,
             stats,
+            status,
         })
     }
 
@@ -89,6 +91,9 @@ impl Connection {
             .unwrap_or_else(|_| Some(empty_song.clone()))
             .unwrap_or(empty_song);
         let stats = self.conn.stats().unwrap_or_default();
+
+        // Status
+        self.status = status.clone();
 
         // Playback State
         self.state = match status.state {

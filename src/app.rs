@@ -30,6 +30,9 @@ pub struct App {
     // used to show playlist popup
     pub playlist_popup: bool,
     pub append_list: ContentList<String>,
+
+    // Determines if the database should be updated or not
+    pub should_update_song_list: bool,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -67,12 +70,33 @@ impl App {
             pl_cursor_pos: 0,
             playlist_popup: false,
             append_list,
+            should_update_song_list: false,
         })
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> AppResult<()> {
         self.conn.update_status();
         self.update_queue();
+
+        // Deals with database update
+        if self.should_update_song_list {
+            if let None = self.conn.status.updating_db {
+                // Update the songs list
+                self.conn.songs_filenames = self
+                    .conn
+                    .conn
+                    .listall()?
+                    .into_iter()
+                    .map(|x| x.file)
+                    .collect();
+
+                self.browser.update_directory(&mut self.conn)?;
+
+                self.should_update_song_list = false;
+            }
+        }
+
+        Ok(())
     }
 
     pub fn quit(&mut self) {
