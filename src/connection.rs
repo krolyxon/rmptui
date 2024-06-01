@@ -13,9 +13,6 @@ pub struct Connection {
     pub state: String,
     pub elapsed: Duration,
     pub total_duration: Duration,
-    pub volume: u8,
-    pub repeat: bool,
-    pub random: bool,
     pub current_song: Song,
     pub stats: mpd::Stats,
     pub status: mpd::Status,
@@ -34,17 +31,10 @@ impl Connection {
             ..Default::default()
         };
 
-        let songs_filenames: Vec<String> = conn
-            .listall()?
-            .into_iter()
-            .map(|x| x.file)
-            .collect();
+        let songs_filenames: Vec<String> = conn.listall()?.into_iter().map(|x| x.file).collect();
 
         let status = conn.status().unwrap();
         let (elapsed, total) = status.time.unwrap_or_default();
-        let volume: u8 = status.volume as u8;
-        let repeat = status.repeat;
-        let random = status.random;
         let stats = conn.stats().unwrap_or_default();
 
         let current_song = conn
@@ -57,9 +47,6 @@ impl Connection {
             state: "Stopped".to_string(),
             elapsed,
             total_duration: total,
-            volume,
-            repeat,
-            random,
             current_song,
             stats,
             status,
@@ -84,13 +71,15 @@ impl Connection {
     /// Update status
     pub fn update_status(&mut self) {
         let status = self.conn.status().unwrap();
+        let stats = self.conn.stats().unwrap_or_default();
+
         let empty_song = self.get_song_with_only_filename("No Song playing or in Queue");
+
         let current_song = self
             .conn
             .currentsong()
             .unwrap_or_else(|_| Some(empty_song.clone()))
             .unwrap_or(empty_song);
-        let stats = self.conn.stats().unwrap_or_default();
 
         // Status
         self.status = status.clone();
@@ -106,15 +95,6 @@ impl Connection {
         let (elapsed, total) = status.time.unwrap_or_default();
         self.elapsed = elapsed;
         self.total_duration = total;
-
-        // Volume
-        self.volume = status.volume as u8;
-
-        // Repeat mode
-        self.repeat = status.repeat;
-
-        // Random mode
-        self.random = status.random;
 
         // Current song
         self.current_song = current_song;
