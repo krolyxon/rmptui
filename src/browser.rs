@@ -1,9 +1,8 @@
-use std::ffi::OsStr;
 use std::path::Path;
 
 use mpd::Song;
 
-use crate::{app::AppResult, connection::Connection};
+use crate::{app::AppResult, connection::Connection, utils::FileExtension};
 
 #[derive(Debug)]
 /// struct for working with directory browser tab in rmptui
@@ -14,23 +13,6 @@ pub struct FileBrowser {
     pub path: String,
     pub prev_path: String,
     pub songs: Vec<Song>,
-}
-
-// https://stackoverflow.com/questions/72392835/check-if-a-file-is-of-a-given-type
-pub trait FileExtension {
-    fn has_extension<S: AsRef<str>>(&self, extensions: &[S]) -> bool;
-}
-
-impl<P: AsRef<Path>> FileExtension for P {
-    fn has_extension<S: AsRef<str>>(&self, extensions: &[S]) -> bool {
-        if let Some(extension) = self.as_ref().extension().and_then(OsStr::to_str) {
-            return extensions
-                .iter()
-                .any(|x| x.as_ref().eq_ignore_ascii_case(extension));
-        }
-
-        false
-    }
 }
 
 impl FileBrowser {
