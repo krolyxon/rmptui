@@ -141,17 +141,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             // Update MPD database
             KeyCode::Char('U') => {
                 app.conn.conn.rescan()?;
-
-                // Update the songs list
-                app.conn.songs_filenames = app
-                    .conn
-                    .conn
-                    .listall()?
-                    .into_iter()
-                    .map(|x| x.file)
-                    .collect();
-
-                app.browser.update_directory(&mut app.conn)?;
+                app.should_update_song_list = true;
             }
 
             // Search for songs
