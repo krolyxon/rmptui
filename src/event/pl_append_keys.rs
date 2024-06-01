@@ -1,5 +1,5 @@
 use crate::app::{App, AppResult, SelectedTab};
-use crate::browser::FileExtension;
+use crate::utils::FileExtension;
 use crossterm::event::{KeyCode, KeyEvent};
 use std::path::Path;
 

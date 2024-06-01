@@ -1,8 +1,8 @@
 use crate::app::AppResult;
+use crate::utils::is_installed;
 use mpd::song::Song;
 use mpd::{Client, State};
 use simple_dmenu::dmenu;
-use std::process::Command;
 use std::time::Duration;
 
 #[derive(Debug)]
@@ -192,20 +192,20 @@ impl Connection {
 
     /// Toggle Repeat mode
     pub fn toggle_repeat(&mut self) {
-        let mode = self.conn.status().unwrap().repeat;
+        let mode = self.status.repeat;
         self.conn.repeat(!mode).unwrap();
     }
 
     /// Toggle random mode
     pub fn toggle_random(&mut self) {
-        let mode = self.conn.status().unwrap().random;
+        let mode = self.status.random;
         self.conn.random(!mode).unwrap();
     }
 
     // Volume controls
     /// Increase Volume
     pub fn inc_volume(&mut self, v: i8) {
-        let cur = self.conn.status().unwrap().volume;
+        let cur = self.status.volume;
         if cur + v <= 100 {
             self.conn.volume(cur + v).unwrap();
         }
@@ -213,19 +213,9 @@ impl Connection {
 
     /// Decrease volume
     pub fn dec_volume(&mut self, v: i8) {
-        let cur = self.conn.status().unwrap().volume;
+        let cur = self.status.volume;
         if cur - v >= 0 {
             self.conn.volume(cur - v).unwrap();
         }
     }
-}
-
-/// Checks if given program is installed in your system
-fn is_installed(ss: &str) -> bool {
-    let output = Command::new("which")
-        .arg(ss)
-        .output()
-        .expect("Failed to execute command");
-
-    output.status.success()
 }

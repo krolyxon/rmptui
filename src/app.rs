@@ -1,6 +1,7 @@
 use std::{path::Path, time::Duration};
 
-use crate::browser::{FileBrowser, FileExtension};
+use crate::browser::FileBrowser;
+use crate::utils::FileExtension;
 use crate::connection::Connection;
 use crate::list::ContentList;
 use crate::ui::InputMode;

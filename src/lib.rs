@@ -18,3 +18,6 @@ pub mod event;
 
 /// Application
 pub mod app;
+
+/// Utilities
+pub mod utils;
