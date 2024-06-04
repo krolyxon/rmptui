@@ -157,10 +157,10 @@ impl Connection {
     }
 
     /// Given a song name from a directory, it returns the full path of the song in the database
-    pub fn get_full_path(&self, short_path: &str) -> Option<String> {
+    pub fn get_full_path(&self, short_path: &str) -> Option<&str> {
         for (i, f) in self.songs_filenames.iter().enumerate() {
             if f.contains(short_path) {
-                return Some(self.songs_filenames.get(i).unwrap().to_string());
+                return Some(self.songs_filenames.get(i).unwrap());
             }
         }
         None
