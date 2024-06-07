@@ -2,7 +2,7 @@ use crate::{
     app::{App, AppResult, SelectedTab},
     ui::InputMode,
 };
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 use std::time::Duration;
 
 use super::{pl_append_keys, pl_rename_keys, search_keys};
@@ -294,6 +294,22 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 }
             }
         }
+    }
+    Ok(())
+}
+
+pub fn handle_mouse_events(mouse_event: MouseEvent, app: &mut App) -> AppResult<()> {
+    match mouse_event.kind {
+        MouseEventKind::ScrollUp => app.handle_scroll_up(),
+        MouseEventKind::ScrollDown => app.handle_scroll_down(),
+        MouseEventKind::Down(button) => {
+            let (x, y) = (mouse_event.column, mouse_event.row);
+            match button {
+                crossterm::event::MouseButton::Left => app.handle_mouse_left_click(x, y)?,
+                _ => {}
+            }
+        }
+        _ => {}
     }
     Ok(())
 }

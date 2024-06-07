@@ -1,11 +1,12 @@
 use std::{path::Path, time::Duration};
 
 use crate::browser::FileBrowser;
-use crate::utils::FileExtension;
 use crate::connection::Connection;
 use crate::list::ContentList;
 use crate::ui::InputMode;
+use crate::utils::FileExtension;
 use mpd::{Client, Song};
+use ratatui::widgets::{ListState, TableState};
 
 // Application result type
 pub type AppResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -384,6 +385,39 @@ impl App {
         if self.selected_tab == SelectedTab::Playlists {
             self.inputmode = InputMode::PlaylistRename;
         }
+        Ok(())
+    }
+
+    // Mouse event handlers
+    pub fn handle_scroll_up(&mut self) {
+        match self.selected_tab {
+            SelectedTab::Queue => {
+                self.queue_list.prev();
+            }
+            SelectedTab::DirectoryBrowser => {
+                self.browser.prev();
+            }
+            SelectedTab::Playlists => {
+                self.pl_list.prev();
+            }
+        }
+    }
+
+    pub fn handle_scroll_down(&mut self) {
+        match self.selected_tab {
+            SelectedTab::Queue => {
+                self.queue_list.next();
+            }
+            SelectedTab::DirectoryBrowser => {
+                self.browser.next();
+            }
+            SelectedTab::Playlists => {
+                self.pl_list.next();
+            }
+        }
+    }
+
+    pub fn handle_mouse_left_click(&mut self, x: u16, y: u16) -> AppResult<()> {
         Ok(())
     }
 }
