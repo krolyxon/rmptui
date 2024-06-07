@@ -52,7 +52,8 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                             }
                         }
                     } else if t == "directory" {
-                        for (t, f) in app.conn.conn.listfiles(f)?.iter() {
+                        let file = format!("{}/{}", app.browser.path, f);
+                        for (t, f) in app.conn.conn.listfiles(&file)?.iter() {
                             // dir_vec.push((t, f));
                             if t == "file"
                                 && Path::new(&f).has_extension(&[
