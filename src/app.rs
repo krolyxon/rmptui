@@ -35,6 +35,11 @@ pub struct App {
 
     // Determines if the database should be updated or not
     pub should_update_song_list: bool,
+
+    // States
+    pub queue_state: TableState,
+    pub browser_state: TableState,
+    pub playlists_state: ListState,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -58,6 +63,10 @@ impl App {
 
         let browser = FileBrowser::new();
 
+        let queue_state = TableState::new();
+        let browser_state = TableState::new();
+        let playlists_state = ListState::default();
+
         Ok(Self {
             running: true,
             conn,
@@ -73,6 +82,9 @@ impl App {
             playlist_popup: false,
             append_list,
             should_update_song_list: false,
+            queue_state,
+            browser_state,
+            playlists_state,
         })
     }
 

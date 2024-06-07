@@ -101,7 +101,6 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
         }
     });
 
-    let mut state = TableState::new();
     let header = ["Artist", "Track", "Title", "Album", "Time"]
         .into_iter()
         .map(Cell::from)
@@ -140,8 +139,8 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
     .header(header)
     .flex(layout::Flex::Legacy);
 
-    state.select(Some(app.browser.selected));
-    frame.render_stateful_widget(table, size, &mut state);
+    app.browser_state.select(Some(app.browser.selected));
+    frame.render_stateful_widget(table, size, &mut app.browser_state);
 }
 
 /// draws playing queue
@@ -196,7 +195,6 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
         }
     });
 
-    let mut state = TableState::new();
     let header = ["Artist", "Track", "Title", "Album", "Time"]
         .into_iter()
         .map(Cell::from)
@@ -234,8 +232,8 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
     .header(header)
     .flex(layout::Flex::Legacy);
 
-    state.select(Some(app.queue_list.index));
-    frame.render_stateful_widget(table, size, &mut state);
+    app.queue_state.select(Some(app.queue_list.index));
+    frame.render_stateful_widget(table, size, &mut app.queue_state);
 }
 
 // Draw search bar
@@ -336,7 +334,6 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
         .split(area);
 
     // Draw list of playlists
-    let mut state = ListState::default();
     let title = Block::default().title(Title::from("Playlist".green().bold()));
     let list = List::new(app.pl_list.list.clone())
         .block(title.borders(Borders::ALL))
@@ -348,8 +345,8 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
                 .add_modifier(Modifier::REVERSED),
         )
         .repeat_highlight_symbol(true);
-    state.select(Some(app.pl_list.index));
-    frame.render_stateful_widget(list, layouts[0], &mut state);
+    app.playlists_state.select(Some(app.pl_list.index));
+    frame.render_stateful_widget(list, layouts[0], &mut app.playlists_state);
 
     // Playlist viewer
 
