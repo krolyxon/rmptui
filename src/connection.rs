@@ -6,6 +6,12 @@ use simple_dmenu::dmenu;
 use std::time::Duration;
 
 #[derive(Debug)]
+pub enum VolumeStatus {
+    Muted(i8),
+    Unmuted,
+}
+
+#[derive(Debug)]
 /// struct storing the mpd Client related stuff
 pub struct Connection {
     pub conn: Client,
@@ -16,6 +22,7 @@ pub struct Connection {
     pub current_song: Song,
     pub stats: mpd::Stats,
     pub status: mpd::Status,
+    pub volume_status: VolumeStatus,
 }
 
 impl Connection {
@@ -41,6 +48,13 @@ impl Connection {
             .currentsong()
             .unwrap_or_else(|_| Some(empty_song.clone()))
             .unwrap_or(empty_song);
+
+        let volume_status = if status.volume == 0 {
+            VolumeStatus::Muted(status.volume)
+        } else {
+            VolumeStatus::Unmuted
+        };
+
         Ok(Self {
             conn,
             songs_filenames,
@@ -50,6 +64,7 @@ impl Connection {
             current_song,
             stats,
             status,
+            volume_status,
         })
     }
 
@@ -207,6 +222,7 @@ impl Connection {
     pub fn inc_volume(&mut self, v: i8) {
         let cur = self.status.volume;
         if cur + v <= 100 {
+            self.volume_status = VolumeStatus::Unmuted;
             self.conn.volume(cur + v).unwrap();
         }
     }
@@ -215,6 +231,7 @@ impl Connection {
     pub fn dec_volume(&mut self, v: i8) {
         let cur = self.status.volume;
         if cur - v >= 0 {
+            self.volume_status = VolumeStatus::Unmuted;
             self.conn.volume(cur - v).unwrap();
         }
     }

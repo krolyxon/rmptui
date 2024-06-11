@@ -1,5 +1,6 @@
 use crate::{
     app::{App, AppResult, SelectedTab},
+    connection::VolumeStatus,
     ui::InputMode,
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
@@ -135,6 +136,22 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
             KeyCode::Char('-') => {
                 app.conn.dec_volume(2);
+                app.conn.update_status();
+            }
+
+            // Toggle Mute
+            KeyCode::Char('m') => {
+                match app.conn.volume_status {
+                    VolumeStatus::Muted(v) => {
+                        app.conn.conn.volume(v)?;
+                        app.conn.volume_status = VolumeStatus::Unmuted;
+                    }
+                    VolumeStatus::Unmuted => {
+                        let current_volume = app.conn.status.volume;
+                        app.conn.conn.volume(0)?;
+                        app.conn.volume_status = VolumeStatus::Muted(current_volume);
+                    }
+                }
                 app.conn.update_status();
             }
 

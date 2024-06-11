@@ -429,7 +429,7 @@ impl App {
         }
     }
 
-    pub fn handle_mouse_left_click(&mut self, x: u16, y: u16) -> AppResult<()> {
+    pub fn handle_mouse_left_click(&mut self, _x: u16, _y: u16) -> AppResult<()> {
         Ok(())
     }
 }
