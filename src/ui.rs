@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::app::{App, SelectedTab};
+use crate::{
+    app::{App, SelectedTab},
+    connection::VolumeStatus,
+};
 use ratatui::{
     prelude::*,
     widgets::{block::Title, *},
@@ -124,10 +127,15 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
                 Title::from(format!("Total Songs: {}", total_songs).green())
                     .alignment(Alignment::Center),
             )
-            .title(
-                Title::from(format!("Volume: {}%", app.conn.status.volume).green())
-                    .alignment(Alignment::Right),
-            )
+            .title(match app.conn.volume_status {
+                VolumeStatus::Unmuted => {
+                    Title::from(format!("Volume: {}%", app.conn.status.volume).green())
+                        .alignment(Alignment::Right)
+                }
+                VolumeStatus::Muted(_v) => {
+                    Title::from(format!("Muted").red()).alignment(Alignment::Right)
+                }
+            })
             .borders(Borders::ALL),
     )
     .highlight_style(
@@ -217,10 +225,15 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
             .title(Title::from(
                 format!("({} items)", app.queue_list.list.len()).bold(),
             ))
-            .title(
-                Title::from(format!("Volume: {}%", app.conn.status.volume).green())
-                    .alignment(Alignment::Right),
-            )
+            .title(match app.conn.volume_status {
+                VolumeStatus::Unmuted => {
+                    Title::from(format!("Volume: {}%", app.conn.status.volume).green())
+                        .alignment(Alignment::Right)
+                }
+                VolumeStatus::Muted(_v) => {
+                    Title::from(format!("Muted").red()).alignment(Alignment::Right)
+                }
+            })
             .borders(Borders::ALL),
     )
     .highlight_style(
