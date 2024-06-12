@@ -5,6 +5,7 @@ use mpd::{Client, State};
 use simple_dmenu::dmenu;
 use std::time::Duration;
 
+/// Defines the current status of volume (Muted or UnMuted)
 #[derive(Debug)]
 pub enum VolumeStatus {
     Muted(i8),

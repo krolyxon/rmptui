@@ -5,7 +5,7 @@ description = """
 a fast and minimal tui mpd client
 """
 readme = "README.md"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 repository = "https://github.com/krolyxon/rmptui"
 keywords = ["rmptui", "mpd", "music", "cli", "tui", "client"]
