@@ -14,6 +14,7 @@ pub enum InputMode {
     Editing,
     Normal,
     PlaylistRename,
+    NewPlaylist,
 }
 
 /// Renders the user interface widgets
@@ -39,6 +40,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         }
         InputMode::PlaylistRename => {
             draw_rename_playlist(frame, app, layout[1]);
+        }
+        InputMode::NewPlaylist => {
+            draw_new_playlist(frame, app, layout[1]);
         }
     }
 
@@ -449,6 +453,26 @@ fn draw_rename_playlist(frame: &mut Frame, app: &mut App, area: Rect) {
             Block::default()
                 .borders(Borders::ALL)
                 .title("Enter New Name: ".bold().green()),
+        );
+    frame.render_widget(input, area);
+}
+
+fn draw_new_playlist(frame: &mut Frame, app: &mut App, area: Rect) {
+    #[allow(clippy::cast_possible_truncation)]
+    frame.set_cursor(
+        // Draw the cursor at the current position in the input field.
+        // This position is can be controlled via the left and right arrow key
+        area.x + app.pl_new_pl_cursor_pos as u16 + 2,
+        // Move one line down, from the border to the input line
+        area.y + 1,
+    );
+
+    let input = Paragraph::new("/".to_string() + &app.pl_new_pl_input)
+        .style(Style::default())
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Enter New Playlist's Name: ".bold().green()),
         );
     frame.render_widget(input, area);
 }

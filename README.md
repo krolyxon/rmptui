@@ -38,6 +38,7 @@ rmptui is a minimal tui mpd client made with rust.
 | `r`                       | Toggle repeat                                   |
 | `z`                       | Toggle random                                   |
 | `/`                       | Search                                          |
+| `R`                       | Rename Playlist                                 |
 | `g`                       | Go to top of list                               |
 | `G`                       | Go to bottom of list                            |
 
@@ -54,4 +55,5 @@ rmptui is a minimal tui mpd client made with rust.
 - [x] metadata based tree view
 - [x] view playlist
 - [x] change playlist name
+- [x] add to new playlist
 - [ ] add lyrics fetcher

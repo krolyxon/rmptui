@@ -1,0 +1,45 @@
+use crate::{
+    app::{App, AppResult},
+    ui::InputMode,
+};
+use crossterm::event::{KeyCode, KeyEvent};
+
+pub fn handle_new_pl_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
+    match key_event.code {
+        KeyCode::Esc => {
+            app.pl_new_pl_input.clear();
+            app.reset_cursor();
+            app.inputmode = InputMode::Normal;
+        }
+        KeyCode::Char(to_insert) => {
+            app.enter_char(to_insert);
+        }
+        KeyCode::Enter => {
+            let pl_name = &app.pl_new_pl_input;
+
+            for song in app.pl_new_pl_songs_buffer.iter() {
+                app.conn.conn.pl_push(pl_name, song)?;
+            }
+            app.pl_new_pl_input.clear();
+
+            app.pl_list.list = App::get_playlist(&mut app.conn.conn)?;
+            app.reset_cursor();
+            app.inputmode = InputMode::Normal;
+        }
+
+        KeyCode::Backspace => {
+            app.delete_char();
+        }
+
+        KeyCode::Left => {
+            app.move_cursor_left();
+        }
+
+        KeyCode::Right => {
+            app.move_cursor_right();
+        }
+
+        _ => {}
+    }
+    Ok(())
+}

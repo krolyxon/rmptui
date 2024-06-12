@@ -6,7 +6,7 @@ use crate::{
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 use std::time::Duration;
 
-use super::{pl_append_keys, pl_rename_keys, search_keys};
+use super::{pl_append_keys, pl_rename_keys, new_pl_keys, search_keys};
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     // searching, playlist renaming, playlist appending
@@ -14,6 +14,8 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         search_keys::handle_search_keys(key_event, app)?;
     } else if app.inputmode == InputMode::PlaylistRename {
         pl_rename_keys::handle_pl_rename_keys(key_event, app)?;
+    } else if app.inputmode == InputMode::NewPlaylist {
+        new_pl_keys::handle_new_pl_keys(key_event, app)?;
     } else if app.playlist_popup {
         pl_append_keys::hande_pl_append_keys(key_event, app)?;
     } else {
@@ -295,8 +297,10 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                     // go to bottom of list
                     KeyCode::Char('G') => app.pl_list.index = app.pl_list.list.len() - 1,
 
-                    // Change playlist name
-                    KeyCode::Char('e') => app.change_playlist_name()?,
+                    // Playlist Rename
+                    KeyCode::Char('R') => {
+                        app.inputmode = InputMode::PlaylistRename;
+                    }
 
                     // add to current playlist
                     KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right | KeyCode::Char(' ') => {
