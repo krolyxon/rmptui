@@ -1,4 +1,5 @@
 use crate::app::{App, AppResult, SelectedTab};
+use crate::ui::InputMode;
 use crate::utils::FileExtension;
 use crossterm::event::{KeyCode, KeyEvent};
 use std::path::Path;
@@ -30,6 +31,10 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                             if *pl_name == "Current Playlist" {
                                 app.conn.conn.push(&song)?;
                                 app.update_queue();
+                            } else if *pl_name == "New Playlist" {
+                                app.pl_new_pl_songs_buffer.clear();
+                                app.pl_new_pl_songs_buffer.push(song.clone());
+                                app.inputmode = InputMode::NewPlaylist;
                             } else {
                                 app.conn.add_to_playlist(pl_name, &song)?;
                             }
@@ -47,12 +52,17 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                             if *pl_name == "Current Playlist" {
                                 app.conn.conn.push(&song)?;
                                 app.update_queue();
+                            } else if *pl_name == "New Playlist" {
+                                app.pl_new_pl_songs_buffer.clear();
+                                app.pl_new_pl_songs_buffer.push(song.clone());
+                                app.inputmode = InputMode::NewPlaylist;
                             } else {
                                 app.conn.add_to_playlist(pl_name, &song)?;
                             }
                         }
                     } else if t == "directory" {
                         let file = format!("{}/{}", app.browser.path, f);
+                        app.pl_new_pl_songs_buffer.clear();
                         for (t, f) in app.conn.conn.listfiles(&file)?.iter() {
                             // dir_vec.push((t, f));
                             if t == "file"
@@ -65,6 +75,9 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                                 let song = app.conn.get_song_with_only_filename(&full_path);
                                 if *pl_name == "Current Playlist" {
                                     app.conn.conn.push(&song)?;
+                                } else if *pl_name == "New Playlist" {
+                                    app.pl_new_pl_songs_buffer.push(song.clone());
+                                    app.inputmode = InputMode::NewPlaylist;
                                 } else {
                                     app.conn.add_to_playlist(pl_name, &song)?;
                                 }
@@ -78,6 +91,8 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                     if *pl_name == "Current Playlist" {
                         app.conn.load_playlist(playlist_name)?;
                         app.update_queue();
+                    } else if *pl_name == "New Playlist" {
+                        app.inputmode = InputMode::NewPlaylist;
                     } else {
                         let songs = app.conn.conn.playlist(playlist_name)?;
                         for song in songs {

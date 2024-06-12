@@ -25,8 +25,13 @@ pub struct App {
     pub inputmode: InputMode,     // Defines input mode, Normal or Search
     pub search_input: String,     // Stores the userinput to be searched
     pub search_cursor_pos: usize, // Stores the cursor position for searching
+
     pub pl_newname_input: String, // Stores the new name of the playlist
     pub pl_cursor_pos: usize,     // Stores the cursor position for renaming playlist
+
+    pub pl_new_pl_input: String,  // Stores the name of new playlist to be created
+    pub pl_new_pl_cursor_pos: usize, // Stores the cursor position of new playlist to be created
+    pub pl_new_pl_songs_buffer: Vec<Song>, // Buffer for songs that need to be added to the newly created playlist
 
     // playlist variables
     // used to show playlist popup
@@ -80,6 +85,9 @@ impl App {
             search_cursor_pos: 0,
             pl_cursor_pos: 0,
             playlist_popup: false,
+            pl_new_pl_input: String::new(),
+            pl_new_pl_cursor_pos: 0,
+            pl_new_pl_songs_buffer: Vec::new(),
             append_list,
             should_update_song_list: false,
             queue_state,
@@ -136,6 +144,7 @@ impl App {
 
     pub fn get_append_list(conn: &mut Client) -> AppResult<ContentList<String>> {
         let mut list = ContentList::new();
+        list.list.push("New Playlist".to_string());
         list.list.push("Current Playlist".to_string());
         for item in Self::get_playlist(conn)? {
             list.list.push(item.to_string());
@@ -286,6 +295,10 @@ impl App {
                 let cursor_moved_left = self.search_cursor_pos.saturating_sub(1);
                 self.search_cursor_pos = self.clamp_cursor(cursor_moved_left);
             }
+            InputMode::NewPlaylist => {
+                let cursor_moved_left = self.pl_new_pl_cursor_pos.saturating_sub(1);
+                self.pl_new_pl_cursor_pos = self.clamp_cursor(cursor_moved_left);
+            }
             _ => {}
         }
     }
@@ -300,6 +313,12 @@ impl App {
                 let cursor_moved_right = self.search_cursor_pos.saturating_add(1);
                 self.search_cursor_pos = self.clamp_cursor(cursor_moved_right);
             }
+
+            InputMode::NewPlaylist => {
+                let cursor_moved_right = self.pl_new_pl_cursor_pos.saturating_add(1);
+                self.pl_new_pl_cursor_pos = self.clamp_cursor(cursor_moved_right);
+            }
+
             _ => {}
         }
     }
@@ -308,19 +327,24 @@ impl App {
         match self.inputmode {
             InputMode::PlaylistRename => {
                 self.pl_newname_input.insert(self.pl_cursor_pos, new_char);
-                self.move_cursor_right();
+            }
+            InputMode::NewPlaylist => {
+                self.pl_new_pl_input
+                    .insert(self.pl_new_pl_cursor_pos, new_char);
             }
             InputMode::Editing => {
                 self.search_input.insert(self.search_cursor_pos, new_char);
-                self.move_cursor_right();
             }
             _ => {}
         }
+
+        self.move_cursor_right();
     }
 
     pub fn delete_char(&mut self) {
         let is_not_cursor_leftmost = match self.inputmode {
             InputMode::PlaylistRename => self.pl_cursor_pos != 0,
+            InputMode::NewPlaylist => self.pl_new_pl_cursor_pos != 0,
             InputMode::Editing => self.search_cursor_pos != 0,
             _ => false,
         };
@@ -333,27 +357,35 @@ impl App {
             let current_index = match self.inputmode {
                 InputMode::Editing => self.search_cursor_pos,
                 InputMode::PlaylistRename => self.pl_cursor_pos,
+                InputMode::NewPlaylist => self.pl_new_pl_cursor_pos,
                 _ => 0,
             };
 
             let from_left_to_current_index = current_index - 1;
 
             if self.inputmode == InputMode::PlaylistRename {
-                // Getting all characters before the selected character.
                 let before_char_to_delete = self
                     .pl_newname_input
                     .chars()
                     .take(from_left_to_current_index);
-                // Getting all characters after selected character.
                 let after_char_to_delete = self.pl_newname_input.chars().skip(current_index);
-                // Put all characters together except the selected one.
-                // By leaving the selected one out, it is forgotten and therefore deleted.
+
                 self.pl_newname_input = before_char_to_delete.chain(after_char_to_delete).collect();
+                self.move_cursor_left();
+            } else if self.inputmode == InputMode::NewPlaylist {
+                let before_char_to_delete = self
+                    .pl_new_pl_input
+                    .chars()
+                    .take(from_left_to_current_index);
+                let after_char_to_delete = self.pl_new_pl_input.chars().skip(current_index);
+
+                self.pl_new_pl_input = before_char_to_delete.chain(after_char_to_delete).collect();
                 self.move_cursor_left();
             } else if self.inputmode == InputMode::Editing {
                 let before_char_to_delete =
                     self.search_input.chars().take(from_left_to_current_index);
                 let after_char_to_delete = self.search_input.chars().skip(current_index);
+
                 self.search_input = before_char_to_delete.chain(after_char_to_delete).collect();
                 self.move_cursor_left();
             }
@@ -363,6 +395,7 @@ impl App {
     pub fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
         match self.inputmode {
             InputMode::PlaylistRename => new_cursor_pos.clamp(0, self.pl_newname_input.len()),
+            InputMode::NewPlaylist => new_cursor_pos.clamp(0, self.pl_new_pl_input.len()),
             InputMode::Editing => new_cursor_pos.clamp(0, self.search_input.len()),
             _ => 0,
         }
@@ -375,6 +408,9 @@ impl App {
             }
             InputMode::PlaylistRename => {
                 self.pl_cursor_pos = 0;
+            }
+            InputMode::NewPlaylist => {
+                self.pl_new_pl_cursor_pos = 0;
             }
             _ => {}
         }
@@ -391,13 +427,6 @@ impl App {
         } else {
             format!("{:02}:{:02}:{:02}", h, m, s)
         }
-    }
-
-    pub fn change_playlist_name(&mut self) -> AppResult<()> {
-        if self.selected_tab == SelectedTab::Playlists {
-            self.inputmode = InputMode::PlaylistRename;
-        }
-        Ok(())
     }
 
     // Mouse event handlers
