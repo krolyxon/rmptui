@@ -23,6 +23,8 @@ pub fn handle_new_pl_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
             app.pl_new_pl_input.clear();
 
             app.pl_list.list = App::get_playlist(&mut app.conn.conn)?;
+            app.append_list = App::get_append_list(&mut app.conn.conn)?;
+
             app.reset_cursor();
             app.inputmode = InputMode::Normal;
         }
