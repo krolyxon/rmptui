@@ -83,7 +83,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
 
             let mut status: bool = false;
             for sn in app.queue_list.list.iter() {
-                let file = sn.file.split("/").last().unwrap_or_default();
+                let file = sn.file.split('/').last().unwrap_or_default();
                 if file.eq(s) {
                     status = true;
                 }
@@ -137,7 +137,7 @@ fn draw_directory_browser(frame: &mut Frame, app: &mut App, size: Rect) {
                         .alignment(Alignment::Right)
                 }
                 VolumeStatus::Muted(_v) => {
-                    Title::from(format!("Muted").red()).alignment(Alignment::Right)
+                    Title::from("Muted".red()).alignment(Alignment::Right)
                 }
             })
             .borders(Borders::ALL),
@@ -235,7 +235,7 @@ fn draw_queue(frame: &mut Frame, app: &mut App, size: Rect) {
                         .alignment(Alignment::Right)
                 }
                 VolumeStatus::Muted(_v) => {
-                    Title::from(format!("Muted").red()).alignment(Alignment::Right)
+                    Title::from("Muted".red()).alignment(Alignment::Right)
                 }
             })
             .borders(Borders::ALL),
@@ -288,7 +288,7 @@ fn draw_progress_bar(frame: &mut Frame, app: &mut App, size: Rect) {
     // Get the current playing state
     let mut state: String = String::new();
     if !app.queue_list.list.is_empty() {
-        state = app.conn.state.clone();
+        state.clone_from(&app.conn.state);
         state.push(':');
     }
 

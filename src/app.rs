@@ -29,7 +29,7 @@ pub struct App {
     pub pl_newname_input: String, // Stores the new name of the playlist
     pub pl_cursor_pos: usize,     // Stores the cursor position for renaming playlist
 
-    pub pl_new_pl_input: String,  // Stores the name of new playlist to be created
+    pub pl_new_pl_input: String, // Stores the name of new playlist to be created
     pub pl_new_pl_cursor_pos: usize, // Stores the cursor position of new playlist to be created
     pub pl_new_pl_songs_buffer: Vec<Song>, // Buffer for songs that need to be added to the newly created playlist
 
@@ -101,8 +101,7 @@ impl App {
         self.update_queue();
 
         // Deals with database update
-        if self.should_update_song_list {
-            if let None = self.conn.status.updating_db {
+        if self.should_update_song_list && self.conn.status.updating_db.is_none() {
                 // Update the songs list
                 self.conn.songs_filenames = self
                     .conn
@@ -115,7 +114,6 @@ impl App {
                 self.browser.update_directory(&mut self.conn)?;
 
                 self.should_update_song_list = false;
-            }
         }
 
         Ok(())
@@ -163,22 +161,22 @@ impl App {
                     let file = format!("{}/{}", self.browser.path, content);
                     let songs = self.conn.conn.listfiles(&file).unwrap_or_default();
                     for (t, f) in songs.iter() {
-                        if t == "file" {
-                            if Path::new(&f).has_extension(&[
+                        if t == "file"
+                            && Path::new(&f).has_extension(&[
                                 "mp3", "ogg", "flac", "m4a", "wav", "aac", "opus", "ape", "wma",
                                 "mpc", "aiff", "dff", "mp2", "mka",
-                            ]) {
-                                let path = file.clone() + "/" + f;
-                                let full_path = path.strip_prefix("./").unwrap_or_else(|| "");
-                                let song = self.conn.get_song_with_only_filename(&full_path);
-                                self.conn.conn.push(&song)?;
-                            }
+                            ])
+                        {
+                            let path = file.clone() + "/" + f;
+                            let full_path = path.strip_prefix("./").unwrap_or("");
+                            let song = self.conn.get_song_with_only_filename(full_path);
+                            self.conn.conn.push(&song)?;
                         }
                     }
                 } else if content_type == "file" {
                     let mut status = false;
                     for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-                        let song_path = song.file.split("/").last().unwrap_or_default();
+                        let song_path = song.file.split('/').last().unwrap_or_default();
                         if song_path.eq(content) {
                             self.conn.conn.delete(i as u32).unwrap();
                             status = true;
@@ -253,7 +251,7 @@ impl App {
         let (t, path) = browser.filetree.get(browser.selected).unwrap();
         if t == "directory" {
             if path != "." {
-                browser.prev_path = browser.path.clone();
+                browser.prev_path.clone_from(&browser.path);
                 browser.path = browser.prev_path.clone() + "/" + path;
                 browser.update_directory(&mut self.conn)?;
                 browser.prev_selected = browser.selected;
@@ -261,7 +259,7 @@ impl App {
             }
         } else {
             let index = self.queue_list.list.iter().position(|x| {
-                let file = x.file.split("/").last().unwrap_or_default();
+                let file = x.file.split('/').last().unwrap_or_default();
                 file.eq(path)
             });
 

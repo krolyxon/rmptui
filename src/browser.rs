@@ -32,7 +32,7 @@ impl FileBrowser {
         let mut file_vec: Vec<(String, String)> = vec![];
         let mut dir_vec: Vec<(String, String)> = vec![];
         for (t, f) in conn.conn.listfiles(self.path.as_str())?.into_iter() {
-            if t == "directory" && !f.starts_with(".") {
+            if t == "directory" && !f.starts_with('.') {
                 dir_vec.push((t, f));
             } else if t == "file"
                 && Path::new(&f).has_extension(&[
@@ -73,7 +73,7 @@ impl FileBrowser {
                     .lsinfo(Song {
                         file: (self.path.clone() + "/" + song)
                             .strip_prefix("./")
-                            .unwrap_or_else(|| "")
+                            .unwrap_or("")
                             .to_string(),
                         ..Default::default()
                     })
@@ -121,7 +121,7 @@ impl FileBrowser {
                 self.update_directory(conn)?;
             }
         } else {
-            self.path = self.prev_path.clone();
+            self.path.clone_from(&self.prev_path);
             self.update_directory(conn)?;
         }
 
