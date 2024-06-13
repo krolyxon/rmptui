@@ -29,14 +29,14 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                         let option_song = songs.first();
                         if let Some(song) = option_song {
                             if *pl_name == "Current Playlist" {
-                                app.conn.conn.push(&song)?;
+                                app.conn.conn.push(song)?;
                                 app.update_queue();
                             } else if *pl_name == "New Playlist" {
                                 app.pl_new_pl_songs_buffer.clear();
                                 app.pl_new_pl_songs_buffer.push(song.clone());
                                 app.inputmode = InputMode::NewPlaylist;
                             } else {
-                                app.conn.add_to_playlist(pl_name, &song)?;
+                                app.conn.add_to_playlist(pl_name, song)?;
                             }
                         }
                     }
@@ -47,7 +47,7 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                     if t == "file" {
                         let short_path = f;
                         if let Some(full_path) = app.conn.get_full_path(short_path) {
-                            let song = app.conn.get_song_with_only_filename(&full_path);
+                            let song = app.conn.get_song_with_only_filename(full_path);
 
                             if *pl_name == "Current Playlist" {
                                 app.conn.conn.push(&song)?;
@@ -72,7 +72,7 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                                 ])
                             {
                                 let full_path = app.conn.get_full_path(f).unwrap_or_default();
-                                let song = app.conn.get_song_with_only_filename(&full_path);
+                                let song = app.conn.get_song_with_only_filename(full_path);
                                 if *pl_name == "Current Playlist" {
                                     app.conn.conn.push(&song)?;
                                 } else if *pl_name == "New Playlist" {
@@ -98,9 +98,7 @@ pub fn hande_pl_append_keys(key_event: KeyEvent, app: &mut App) -> AppResult<()>
                         for song in songs {
                             // We ignore the Err() since there could be songs in playlists, which do not exist in the db anymore.
                             // So instead of panicking, we just ignore if the song does not exists
-                            app.conn
-                                .add_to_playlist(*pl_name, &song)
-                                .unwrap_or_else(|_| {});
+                            app.conn.add_to_playlist(pl_name, &song).unwrap_or(());
                         }
                     }
                 }

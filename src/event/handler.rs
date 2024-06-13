@@ -6,7 +6,7 @@ use crate::{
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 use std::time::Duration;
 
-use super::{pl_append_keys, pl_rename_keys, new_pl_keys, search_keys};
+use super::{new_pl_keys, pl_append_keys, pl_rename_keys, search_keys};
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     // searching, playlist renaming, playlist appending
@@ -325,9 +325,8 @@ pub fn handle_mouse_events(mouse_event: MouseEvent, app: &mut App) -> AppResult<
         MouseEventKind::ScrollDown => app.handle_scroll_down(),
         MouseEventKind::Down(button) => {
             let (x, y) = (mouse_event.column, mouse_event.row);
-            match button {
-                crossterm::event::MouseButton::Left => app.handle_mouse_left_click(x, y)?,
-                _ => {}
+            if button == crossterm::event::MouseButton::Left {
+                app.handle_mouse_left_click(x, y)?;
             }
         }
         _ => {}
