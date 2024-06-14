@@ -5,7 +5,7 @@ use crossterm::terminal::{self, *};
 use std::panic;
 
 use crate::app::{App, AppResult};
-use crate::event::event::EventHandler;
+use crate::event_handler::event::EventHandler;
 
 pub type CrosstermTerminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stderr>>;
 

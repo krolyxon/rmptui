@@ -14,7 +14,7 @@ pub mod list;
 pub mod browser;
 
 /// Event Handler/ keymaps
-pub mod event;
+pub mod event_handler;
 
 /// Application
 pub mod app;

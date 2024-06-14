@@ -1,9 +1,9 @@
 use ratatui::prelude::*;
 use rmptui::app::App;
 use rmptui::app::AppResult;
-use rmptui::event::event::Event;
-use rmptui::event::event::EventHandler;
-use rmptui::event::handler;
+use rmptui::event_handler::event::Event;
+use rmptui::event_handler::event::EventHandler;
+use rmptui::event_handler::handler;
 use rmptui::tui;
 use std::env;
 use std::io;
