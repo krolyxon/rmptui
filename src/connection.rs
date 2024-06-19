@@ -50,11 +50,7 @@ impl Connection {
             .unwrap_or_else(|_| Some(empty_song.clone()))
             .unwrap_or(empty_song);
 
-        let volume_status = if status.volume == 0 {
-            VolumeStatus::Muted(status.volume)
-        } else {
-            VolumeStatus::Unmuted
-        };
+        let volume_status = VolumeStatus::Unmuted;
 
         Ok(Self {
             conn,

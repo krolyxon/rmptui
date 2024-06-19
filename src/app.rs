@@ -142,8 +142,8 @@ impl App {
 
     pub fn get_append_list(conn: &mut Client) -> AppResult<ContentList<String>> {
         let mut list = ContentList::new();
-        list.list.push("New Playlist".to_string());
         list.list.push("Current Playlist".to_string());
+        list.list.push("New Playlist".to_string());
         for item in Self::get_playlist(conn)? {
             list.list.push(item.to_string());
         }
