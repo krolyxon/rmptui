@@ -60,9 +60,9 @@ impl App {
     pub async fn new(address: &str, password: Option<&str>, config: Config) -> AppResult<Self> {
         let mut conn = Connection::connect(address, password).await?;
         let mut queue_list = ContentList::new();
-        queue_list.list = conn.client.queue().await?;
+        queue_list.list = conn.queue().await?;
         let mut pl_list = ContentList::new();
-        pl_list.list = conn.client.playlists().await?;
+        pl_list.list = conn.playlists().await?;
         pl_list.list.sort();
         let append_list = Self::get_append_list(&mut conn).await?;
         let mut browser = FileBrowser::new();
@@ -133,7 +133,7 @@ impl App {
     }
 
     pub async fn update_queue(&mut self) -> AppResult<()> {
-        self.queue_list.list = self.conn.client.queue().await?;
+        self.queue_list.list = self.conn.queue().await?;
         if self.queue_list.list.is_empty() {
             self.queue_list.index = 0;
         } else {
@@ -143,7 +143,7 @@ impl App {
     }
 
     pub async fn refresh_playlists(&mut self) -> AppResult<()> {
-        self.pl_list.list = self.conn.client.playlists().await?;
+        self.pl_list.list = self.conn.playlists().await?;
         self.pl_list.list.sort();
         self.pl_list.index = self
             .pl_list
@@ -155,7 +155,7 @@ impl App {
 
     pub async fn refresh_playlist_view(&mut self) -> AppResult<()> {
         self.playlist_contents = match self.pl_list.list.get(self.pl_list.index) {
-            Some(name) => self.conn.client.playlist(name).await?,
+            Some(name) => self.conn.playlist(name).await?,
             None => Vec::new(),
         };
         self.playlist_song_index = self
@@ -172,7 +172,6 @@ impl App {
             return Ok(());
         }
         self.conn
-            .client
             .delete_playlist_song(playlist, self.playlist_song_index)
             .await?;
         self.refresh_playlist_view().await
@@ -191,7 +190,6 @@ impl App {
             return Ok(());
         };
         self.conn
-            .client
             .move_playlist_song(playlist, self.playlist_song_index, target)
             .await?;
         self.playlist_song_index = target;
@@ -202,7 +200,7 @@ impl App {
         let Some(playlist) = self.pl_list.list.get(self.pl_list.index) else {
             return Ok(());
         };
-        self.conn.client.delete_playlist(playlist).await?;
+        self.conn.delete_playlist(playlist).await?;
         self.refresh_playlists().await?;
         Ok(())
     }
@@ -214,10 +212,9 @@ impl App {
         if self.playlist_song_index >= self.playlist_contents.len() {
             return Ok(());
         }
-        let queue_position = self.conn.client.queue().await?.len();
-        self.conn.client.append_playlist(playlist).await?;
+        let queue_position = self.conn.queue().await?.len();
+        self.conn.append_playlist(playlist).await?;
         self.conn
-            .client
             .play(Some((queue_position + self.playlist_song_index) as u32))
             .await?;
         self.update_queue().await?;
@@ -228,7 +225,7 @@ impl App {
         let mut list = ContentList::new();
         list.list.push("Current Playlist".to_string());
         list.list.push("New Playlist".to_string());
-        list.list.extend(conn.client.playlists().await?);
+        list.list.extend(conn.playlists().await?);
         Ok(list)
     }
 
@@ -240,12 +237,7 @@ impl App {
                 };
                 match entry {
                     BrowserEntry::Directory(name) => {
-                        let path = join_library_path(&self.browser.path, &name);
-                        for (entry_type, file) in self.conn.client.list_files(&path).await? {
-                            if entry_type == "file" && is_audio_file(&file) {
-                                self.conn.client.add(&file).await?;
-                            }
-                        }
+                        self.conn.add(&name).await?;
                     }
                     BrowserEntry::Song(song) => {
                         let positions: Vec<u32> = self
@@ -258,10 +250,10 @@ impl App {
                             })
                             .collect();
                         if positions.is_empty() {
-                            self.conn.client.add(&song.file).await?;
+                            self.conn.add(&song.file).await?;
                         } else {
                             for position in positions.into_iter().rev() {
-                                self.conn.client.delete(position).await?;
+                                self.conn.delete(position).await?;
                             }
                         }
                     }
@@ -272,10 +264,7 @@ impl App {
             }
             SelectedTab::Queue => {
                 if !self.queue_list.list.is_empty() {
-                    self.conn
-                        .client
-                        .delete(self.queue_list.index as u32)
-                        .await?;
+                    self.conn.delete(self.queue_list.index as u32).await?;
                 }
             }
             SelectedTab::Playlists => {}
@@ -300,7 +289,7 @@ impl App {
         match entry {
             BrowserEntry::Directory(name) => {
                 self.browser.prev_selected = self.browser.selected;
-                self.browser.path = join_library_path(&self.browser.path, &name);
+                self.browser.path = name;
                 self.browser.selected = 0;
                 self.browser.update_directory(&mut self.conn).await?;
             }
@@ -311,7 +300,7 @@ impl App {
                     .iter()
                     .position(|queued| queued.file == song.file)
                 {
-                    self.conn.client.play(Some(index as u32)).await?;
+                    self.conn.play(Some(index as u32)).await?;
                 } else {
                     self.conn.push(&song).await?;
                     self.update_queue().await?;
@@ -340,26 +329,23 @@ impl App {
                 };
                 match entry {
                     BrowserEntry::Song(song) => vec![song],
-                    BrowserEntry::Directory(name) => {
-                        let path = join_library_path(&self.browser.path, &name);
-                        self.conn
-                            .client
-                            .list_files(&path)
-                            .await?
-                            .into_iter()
-                            .filter_map(|(kind, file)| {
-                                (kind == "file" && is_audio_file(&file))
-                                    .then(|| Connection::song_from_file(&file))
-                            })
-                            .collect()
-                    }
+                    BrowserEntry::Directory(name) => self
+                        .conn
+                        .list_files(&name)
+                        .await?
+                        .into_iter()
+                        .filter_map(|(kind, file)| {
+                            (kind == "file" && is_audio_file(&file))
+                                .then(|| Connection::song_from_file(&file))
+                        })
+                        .collect(),
                 }
             }
             SelectedTab::Playlists => {
                 let Some(name) = self.pl_list.list.get(self.pl_list.index) else {
                     return Ok(());
                 };
-                self.conn.client.playlist(name).await?
+                self.conn.playlist(name).await?
             }
         };
 
@@ -370,8 +356,26 @@ impl App {
                     self.update_queue().await?;
                 }
             } else {
-                for song in songs {
-                    self.conn.client.add(&song.file).await?;
+                let selected_directory = if self.selected_tab == SelectedTab::DirectoryBrowser {
+                    self.browser
+                        .entries
+                        .get(self.browser.selected)
+                        .and_then(|entry| {
+                            if let BrowserEntry::Directory(path) = entry {
+                                Some(path.as_str())
+                            } else {
+                                None
+                            }
+                        })
+                } else {
+                    None
+                };
+                if let Some(path) = selected_directory {
+                    self.conn.add(path).await?;
+                } else {
+                    for song in songs {
+                        self.conn.add(&song.file).await?;
+                    }
                 }
                 self.update_queue().await?;
             }
@@ -493,14 +497,5 @@ impl App {
             SelectedTab::DirectoryBrowser => self.browser.next(),
             SelectedTab::Playlists => self.pl_list.next(),
         }
-    }
-}
-
-pub fn join_library_path(parent: &str, child: &str) -> String {
-    let parent = parent.trim_matches('/').trim_start_matches("./");
-    if parent.is_empty() || parent == "." {
-        child.trim_start_matches("./").to_string()
-    } else {
-        format!("{parent}/{}", child.trim_start_matches("./"))
     }
 }

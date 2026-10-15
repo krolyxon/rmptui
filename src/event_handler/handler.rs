@@ -45,7 +45,7 @@ pub async fn handle_key_events(key: KeyEvent, app: &mut App) -> AppResult<()> {
     if is_bound(app, "quit", key) {
         app.quit();
     } else if is_bound(app, "clear_queue", key) {
-        app.conn.client.clear().await?;
+        app.conn.clear().await?;
         app.update_queue().await?;
         app.conn.update_status().await?;
     } else if is_bound(app, "toggle_pause", key) {
@@ -67,7 +67,6 @@ pub async fn handle_key_events(key: KeyEvent, app: &mut App) -> AppResult<()> {
                 current.saturating_sub(app.config.playback.seek_seconds)
             };
             app.conn
-                .client
                 .seek(position.pos, std::time::Duration::from_secs(target))
                 .await?;
             app.conn.update_status().await?;
@@ -86,13 +85,13 @@ pub async fn handle_key_events(key: KeyEvent, app: &mut App) -> AppResult<()> {
         app.refresh_playlist_view().await?;
     } else if is_bound(app, "next_track", key) {
         if !app.queue_list.list.is_empty() {
-            app.conn.client.next().await?;
+            app.conn.next().await?;
             app.update_queue().await?;
             app.conn.update_status().await?;
         }
     } else if is_bound(app, "previous_track", key) {
         if !app.queue_list.list.is_empty() {
-            app.conn.client.previous().await?;
+            app.conn.previous().await?;
             app.update_queue().await?;
             app.conn.update_status().await?;
         }
@@ -107,17 +106,17 @@ pub async fn handle_key_events(key: KeyEvent, app: &mut App) -> AppResult<()> {
     } else if is_bound(app, "toggle_mute", key) {
         match app.conn.volume_status {
             VolumeStatus::Muted(volume) => {
-                app.conn.client.set_volume(volume).await?;
+                app.conn.set_volume(volume).await?;
                 app.conn.volume_status = VolumeStatus::Unmuted;
             }
             VolumeStatus::Unmuted => {
-                app.conn.client.set_volume(0).await?;
+                app.conn.set_volume(0).await?;
                 app.conn.volume_status = VolumeStatus::Muted(app.conn.status.volume);
             }
         }
         app.conn.update_status().await?;
     } else if is_bound(app, "update_database", key) {
-        app.conn.client.update_database().await?;
+        app.conn.update_database().await?;
         app.should_update_song_list = true;
         app.conn.update_status().await?;
     } else if is_bound(app, "search", key) {
@@ -149,15 +148,12 @@ async fn handle_queue_key(key: KeyEvent, app: &mut App) -> AppResult<()> {
         app.queue_list.prev();
     } else if is_bound(app, "activate", key) {
         if app.queue_list.index < app.queue_list.list.len() {
-            app.conn
-                .client
-                .play(Some(app.queue_list.index as u32))
-                .await?;
+            app.conn.play(Some(app.queue_list.index as u32)).await?;
             app.conn.update_status().await?;
         }
     } else if is_bound(app, "queue_delete", key) {
         if app.queue_list.index < app.queue_list.list.len() {
-            app.conn.client.delete(app.queue_list.index as u32).await?;
+            app.conn.delete(app.queue_list.index as u32).await?;
             app.update_queue().await?;
             app.conn.update_status().await?;
         }
@@ -165,7 +161,6 @@ async fn handle_queue_key(key: KeyEvent, app: &mut App) -> AppResult<()> {
         let position = app.queue_list.index;
         if position + 1 < app.queue_list.list.len() {
             app.conn
-                .client
                 .swap(position as u32, (position + 1) as u32)
                 .await?;
             app.queue_list.index += 1;
@@ -175,7 +170,6 @@ async fn handle_queue_key(key: KeyEvent, app: &mut App) -> AppResult<()> {
         let position = app.queue_list.index;
         if position > 0 && position < app.queue_list.list.len() {
             app.conn
-                .client
                 .swap(position as u32, (position - 1) as u32)
                 .await?;
             app.queue_list.index -= 1;
@@ -322,7 +316,6 @@ async fn handle_input_key(key: KeyEvent, app: &mut App) -> AppResult<()> {
                 if let Some(old_name) = app.pl_list.list.get(app.pl_list.index).cloned() {
                     if !app.pl_newname_input.trim().is_empty() {
                         app.conn
-                            .client
                             .rename_playlist(&old_name, &app.pl_newname_input)
                             .await?;
                         app.refresh_playlists().await?;

@@ -23,7 +23,10 @@ pub enum BrowserEntry {
 impl BrowserEntry {
     pub fn name(&self) -> &str {
         match self {
-            Self::Directory(name) => name,
+            Self::Directory(path) => Path::new(path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or(path),
             Self::Song(song) => Path::new(&song.file)
                 .file_name()
                 .and_then(|name| name.to_str())
@@ -42,7 +45,7 @@ impl FileBrowser {
 
     pub async fn update_directory(&mut self, conn: &mut Connection) -> AppResult<()> {
         let query_path = self.path.trim_start_matches("./").trim_matches('/');
-        let (directories, songs) = conn.client.ls_info(query_path).await?;
+        let (directories, songs) = conn.ls_info(query_path).await?;
         let mut entries = Vec::new();
         for directory in directories {
             if let Some(name) = Path::new(&directory)
@@ -50,7 +53,7 @@ impl FileBrowser {
                 .and_then(|name| name.to_str())
             {
                 if !name.starts_with('.') {
-                    entries.push(BrowserEntry::Directory(name.to_string()));
+                    entries.push(BrowserEntry::Directory(directory));
                 }
             }
         }
@@ -110,5 +113,52 @@ impl FileBrowser {
         }
         self.selected = self.prev_selected.min(self.entries.len().saturating_sub(1));
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::{
+        io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+        net::TcpListener,
+    };
+
+    #[tokio::test]
+    async fn preserves_mpd_directory_uris_and_displays_their_basename() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut stream = BufReader::new(stream);
+            stream
+                .get_mut()
+                .write_all(b"OK MPD 0.23.0\n")
+                .await
+                .unwrap();
+
+            for response in ["OK\n", "OK\n", "OK\n", "directory: library/Artist\nOK\n"] {
+                let mut command = String::new();
+                stream.read_line(&mut command).await.unwrap();
+                stream
+                    .get_mut()
+                    .write_all(response.as_bytes())
+                    .await
+                    .unwrap();
+            }
+        });
+
+        let mut conn = Connection::connect(&address.to_string(), None)
+            .await
+            .unwrap();
+        let mut browser = FileBrowser::new();
+        browser.update_directory(&mut conn).await.unwrap();
+
+        assert_eq!(
+            browser.entries,
+            vec![BrowserEntry::Directory("library/Artist".to_string())]
+        );
+        assert_eq!(browser.entries[0].name(), "Artist");
+        server.await.unwrap();
     }
 }

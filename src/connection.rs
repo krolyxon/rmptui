@@ -78,15 +78,25 @@ impl fmt::Display for MpdError {
 impl Error for MpdError {}
 
 #[derive(Debug)]
-pub struct MpdClient {
+pub struct Connection {
     stream: BufReader<TcpStream>,
+    pub current_song: Song,
+    pub stats: Stats,
+    pub status: Status,
+    pub volume_status: VolumeStatus,
+    last_status_update: Instant,
 }
 
-impl MpdClient {
-    pub async fn connect(address: &str, password: Option<&str>) -> AppResult<Self> {
+impl Connection {
+    async fn open(address: &str, password: Option<&str>) -> AppResult<Self> {
         let stream = TcpStream::connect(address).await?;
         let mut client = Self {
             stream: BufReader::new(stream),
+            current_song: Song::default(),
+            stats: Stats::default(),
+            status: Status::default(),
+            volume_status: VolumeStatus::Unmuted,
+            last_status_update: Instant::now(),
         };
         let mut greeting = String::new();
         client.stream.read_line(&mut greeting).await?;
@@ -132,7 +142,7 @@ impl MpdClient {
         }
     }
 
-    pub async fn status(&mut self) -> AppResult<Status> {
+    async fn read_status(&mut self) -> AppResult<Status> {
         let fields = fields(self.command("status", &[]).await?);
         let time = fields.get("time").and_then(|s| {
             let (elapsed, total) = s.split_once(':')?;
@@ -171,7 +181,7 @@ impl MpdClient {
         })
     }
 
-    pub async fn stats(&mut self) -> AppResult<Stats> {
+    async fn read_stats(&mut self) -> AppResult<Stats> {
         let fields = fields(self.command("stats", &[]).await?);
         Ok(Stats {
             songs: fields
@@ -181,7 +191,7 @@ impl MpdClient {
         })
     }
 
-    pub async fn current_song(&mut self) -> AppResult<Song> {
+    async fn read_current_song(&mut self) -> AppResult<Song> {
         Ok(parse_songs(self.command("currentsong", &[]).await?)
             .into_iter()
             .next()
@@ -193,9 +203,9 @@ impl MpdClient {
     }
 
     pub async fn snapshot(&mut self) -> AppResult<MpdSnapshot> {
-        let status = self.status().await?;
-        let stats = self.stats().await?;
-        let current_song = self.current_song().await?;
+        let status = self.read_status().await?;
+        let stats = self.read_stats().await?;
+        let current_song = self.read_current_song().await?;
         let queue = self.queue().await?;
         Ok(MpdSnapshot {
             status,
@@ -287,17 +297,6 @@ impl MpdClient {
         Ok(())
     }
 
-    pub async fn pause(&mut self, paused: bool) -> AppResult<()> {
-        self.command("pause", &[if paused { "1" } else { "0" }])
-            .await?;
-        Ok(())
-    }
-
-    pub async fn toggle_pause(&mut self) -> AppResult<()> {
-        self.command("pause", &[]).await?;
-        Ok(())
-    }
-
     pub async fn set_repeat(&mut self, enabled: bool) -> AppResult<()> {
         self.command("repeat", &[if enabled { "1" } else { "0" }])
             .await?;
@@ -351,18 +350,8 @@ impl MpdClient {
         Ok(())
     }
 
-    pub async fn load_playlist(&mut self, name: &str) -> AppResult<()> {
-        self.append_playlist(name).await?;
-        self.play(None).await
-    }
-
     pub async fn append_playlist(&mut self, name: &str) -> AppResult<()> {
         self.command("load", &[name]).await?;
-        Ok(())
-    }
-
-    pub async fn add_to_playlist(&mut self, playlist: &str, file: &str) -> AppResult<()> {
-        self.command("playlistadd", &[playlist, file]).await?;
         Ok(())
     }
 
@@ -418,30 +407,11 @@ impl MpdClient {
     }
 }
 
-#[derive(Debug)]
-pub struct Connection {
-    pub client: MpdClient,
-    pub current_song: Song,
-    pub stats: Stats,
-    pub status: Status,
-    pub volume_status: VolumeStatus,
-    last_status_update: Instant,
-}
-
 impl Connection {
     pub async fn connect(address: &str, password: Option<&str>) -> AppResult<Self> {
-        let mut client = MpdClient::connect(address, password).await?;
-        let status = client.status().await?;
-        let stats = client.stats().await?;
-        let current_song = client.current_song().await?;
-        Ok(Self {
-            client,
-            current_song,
-            stats,
-            status,
-            volume_status: VolumeStatus::Unmuted,
-            last_status_update: Instant::now(),
-        })
+        let mut connection = Self::open(address, password).await?;
+        connection.update_status().await?;
+        Ok(connection)
     }
 
     pub fn apply_snapshot(&mut self, status: Status, stats: Stats, current_song: Song) {
@@ -452,9 +422,9 @@ impl Connection {
     }
 
     pub async fn update_status(&mut self) -> AppResult<()> {
-        self.status = self.client.status().await?;
-        self.stats = self.client.stats().await?;
-        self.current_song = self.client.current_song().await?;
+        self.status = self.read_status().await?;
+        self.stats = self.read_stats().await?;
+        self.current_song = self.read_current_song().await?;
         self.last_status_update = Instant::now();
         Ok(())
     }
@@ -484,21 +454,23 @@ impl Connection {
     }
 
     pub async fn push(&mut self, song: &Song) -> AppResult<()> {
-        self.client.add(&song.file).await?;
-        let queue = self.client.queue().await?;
+        self.add(&song.file).await?;
+        let queue = self.queue().await?;
         if !queue.is_empty() {
-            self.client.play(Some(queue.len() as u32 - 1)).await?;
+            self.play(Some(queue.len() as u32 - 1)).await?;
         }
         self.update_status().await
     }
 
     pub async fn load_playlist(&mut self, playlist: &str) -> AppResult<()> {
-        self.client.load_playlist(playlist).await?;
+        self.append_playlist(playlist).await?;
+        self.play(None).await?;
         self.update_status().await
     }
 
     pub async fn add_to_playlist(&mut self, playlist: &str, song: &Song) -> AppResult<()> {
-        self.client.add_to_playlist(playlist, &song.file).await
+        self.command("playlistadd", &[playlist, &song.file]).await?;
+        Ok(())
     }
 
     pub fn song_from_file(filename: &str) -> Song {
@@ -518,41 +490,41 @@ impl Connection {
     }
 
     pub async fn toggle_pause(&mut self) -> AppResult<()> {
-        self.client.toggle_pause().await?;
+        self.command("pause", &[]).await?;
         self.update_status().await
     }
 
     pub async fn pause(&mut self) -> AppResult<()> {
-        self.client.pause(true).await?;
+        self.command("pause", &["1"]).await?;
         self.update_status().await
     }
 
     pub async fn toggle_repeat(&mut self) -> AppResult<()> {
-        self.client.set_repeat(!self.status.repeat).await?;
+        self.set_repeat(!self.status.repeat).await?;
         self.update_status().await
     }
 
     pub async fn toggle_random(&mut self) -> AppResult<()> {
-        self.client.set_random(!self.status.random).await?;
+        self.set_random(!self.status.random).await?;
         self.update_status().await
     }
 
     pub async fn inc_volume(&mut self, amount: i8) -> AppResult<()> {
         let volume = self.status.volume.saturating_add(amount).min(100);
         self.volume_status = VolumeStatus::Unmuted;
-        self.client.set_volume(volume).await?;
+        self.set_volume(volume).await?;
         self.update_status().await
     }
 
     pub async fn dec_volume(&mut self, amount: i8) -> AppResult<()> {
         let volume = self.status.volume.saturating_sub(amount).max(0);
         self.volume_status = VolumeStatus::Unmuted;
-        self.client.set_volume(volume).await?;
+        self.set_volume(volume).await?;
         self.update_status().await
     }
 
     pub async fn refresh_song_list(&mut self) -> AppResult<()> {
-        self.stats = self.client.stats().await?;
+        self.stats = self.read_stats().await?;
         Ok(())
     }
 }
@@ -702,9 +674,7 @@ mod tests {
             stream.get_mut().write_all(b"OK\n").await.unwrap();
         });
 
-        let mut client = MpdClient::connect(&address.to_string(), None)
-            .await
-            .unwrap();
+        let mut client = Connection::open(&address.to_string(), None).await.unwrap();
         client.command("play", &["0"]).await.unwrap();
         server.await.unwrap();
     }
@@ -729,9 +699,7 @@ mod tests {
             }
         });
 
-        let mut client = MpdClient::connect(&address.to_string(), None)
-            .await
-            .unwrap();
+        let mut client = Connection::open(&address.to_string(), None).await.unwrap();
         client.ls_info("").await.unwrap();
         client.list_files("").await.unwrap();
         server.await.unwrap();
@@ -761,9 +729,7 @@ mod tests {
             }
         });
 
-        let mut client = MpdClient::connect(&address.to_string(), None)
-            .await
-            .unwrap();
+        let mut client = Connection::open(&address.to_string(), None).await.unwrap();
         client.delete_playlist_song("mix \"one\"", 2).await.unwrap();
         client
             .move_playlist_song("mix \"one\"", 1, 2)
