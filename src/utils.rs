@@ -1,16 +1,5 @@
-use std::process::Command;
 use std::ffi::OsStr;
 use std::path::Path;
-
-/// Checks if given program is installed in your system
-pub fn is_installed(ss: &str) -> bool {
-    let output = Command::new("which")
-        .arg(ss)
-        .output()
-        .expect("Failed to execute command");
-
-    output.status.success()
-}
 
 /// Checks if a file has a given extension
 // https://stackoverflow.com/questions/72392835/check-if-a-file-is-of-a-given-type
@@ -30,3 +19,9 @@ impl<P: AsRef<Path>> FileExtension for P {
     }
 }
 
+pub fn is_audio_file(path: &str) -> bool {
+    Path::new(path).has_extension(&[
+        "mp3", "ogg", "flac", "m4a", "wav", "aac", "opus", "ape", "wma", "mpc", "aiff", "dff",
+        "mp2", "mka",
+    ])
+}

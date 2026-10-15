@@ -1,121 +1,130 @@
-use std::{path::Path, time::Duration};
+use std::time::Duration;
 
-use crate::browser::FileBrowser;
-use crate::connection::Connection;
-use crate::list::ContentList;
-use crate::ui::InputMode;
-use crate::utils::FileExtension;
-use mpd::{Client, Song};
+use crate::{
+    browser::{BrowserEntry, FileBrowser},
+    config::Config,
+    connection::{Connection, MpdSnapshot, Song},
+    list::ContentList,
+    ui::InputMode,
+    utils::is_audio_file,
+    AppResult,
+};
 use ratatui::widgets::{ListState, TableState};
 
-// Application result type
-pub type AppResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-/// Application
 #[derive(Debug)]
 pub struct App {
-    pub running: bool,                 // Check if app is running
-    pub conn: Connection,              // Connection
-    pub browser: FileBrowser,          // Directory browser
-    pub queue_list: ContentList<Song>, // Stores the current playing queue
-    pub pl_list: ContentList<String>,  // Stores list of playlists
-    pub selected_tab: SelectedTab,     // Used to switch between tabs
-
-    // Search
-    pub inputmode: InputMode,     // Defines input mode, Normal or Search
-    pub search_input: String,     // Stores the userinput to be searched
-    pub search_cursor_pos: usize, // Stores the cursor position for searching
-
-    pub pl_newname_input: String, // Stores the new name of the playlist
-    pub pl_cursor_pos: usize,     // Stores the cursor position for renaming playlist
-
-    pub pl_new_pl_input: String, // Stores the name of new playlist to be created
-    pub pl_new_pl_cursor_pos: usize, // Stores the cursor position of new playlist to be created
-    pub pl_new_pl_songs_buffer: Vec<Song>, // Buffer for songs that need to be added to the newly created playlist
-
-    // playlist variables
-    // used to show playlist popup
+    pub running: bool,
+    pub conn: Connection,
+    pub config: Config,
+    pub browser: FileBrowser,
+    pub queue_list: ContentList<Song>,
+    pub pl_list: ContentList<String>,
+    pub playlist_focus: PlaylistFocus,
+    pub playlist_song_index: usize,
+    pub selected_tab: SelectedTab,
+    pub inputmode: InputMode,
+    pub search_input: String,
+    pub search_cursor_pos: usize,
+    pub browser_search_results: Vec<usize>,
+    pub browser_search_index: usize,
+    pub pl_newname_input: String,
+    pub pl_cursor_pos: usize,
+    pub pl_new_pl_input: String,
+    pub pl_new_pl_cursor_pos: usize,
+    pub pl_new_pl_songs_buffer: Vec<Song>,
     pub playlist_popup: bool,
     pub append_list: ContentList<String>,
-
-    // Determines if the database should be updated or not
     pub should_update_song_list: bool,
-
-    // States
     pub queue_state: TableState,
     pub browser_state: TableState,
     pub playlists_state: ListState,
+    pub playlist_songs_state: TableState,
+    pub playlist_contents: Vec<Song>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum SelectedTab {
     DirectoryBrowser,
     Queue,
     Playlists,
 }
 
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+pub enum PlaylistFocus {
+    #[default]
+    List,
+    Songs,
+}
+
 impl App {
-    pub fn builder(addrs: &str) -> AppResult<Self> {
-        let mut conn = Connection::builder(addrs)?;
+    pub async fn new(address: &str, password: Option<&str>, config: Config) -> AppResult<Self> {
+        let mut conn = Connection::connect(address, password).await?;
         let mut queue_list = ContentList::new();
+        queue_list.list = conn.client.queue().await?;
         let mut pl_list = ContentList::new();
-
-        pl_list.list = Self::get_playlist(&mut conn.conn)?;
+        pl_list.list = conn.client.playlists().await?;
         pl_list.list.sort();
+        let append_list = Self::get_append_list(&mut conn).await?;
+        let mut browser = FileBrowser::new();
+        browser.update_directory(&mut conn).await?;
 
-        let append_list = Self::get_append_list(&mut conn.conn)?;
-        Self::get_queue(&mut conn, &mut queue_list.list);
+        if let Some(position) = conn.current_song.place {
+            queue_list.index = position.pos as usize;
+        }
 
-        let browser = FileBrowser::new();
-
-        let queue_state = TableState::new();
-        let browser_state = TableState::new();
-        let playlists_state = ListState::default();
-
-        Ok(Self {
+        let mut app = Self {
             running: true,
             conn,
+            config,
+            browser,
             queue_list,
             pl_list,
+            playlist_focus: PlaylistFocus::List,
+            playlist_song_index: 0,
             selected_tab: SelectedTab::Queue,
-            browser,
             inputmode: InputMode::Normal,
             search_input: String::new(),
-            pl_newname_input: String::new(),
             search_cursor_pos: 0,
+            browser_search_results: Vec::new(),
+            browser_search_index: 0,
+            pl_newname_input: String::new(),
             pl_cursor_pos: 0,
-            playlist_popup: false,
             pl_new_pl_input: String::new(),
             pl_new_pl_cursor_pos: 0,
             pl_new_pl_songs_buffer: Vec::new(),
+            playlist_popup: false,
             append_list,
             should_update_song_list: false,
-            queue_state,
-            browser_state,
-            playlists_state,
-        })
+            queue_state: TableState::default(),
+            browser_state: TableState::default(),
+            playlists_state: ListState::default(),
+            playlist_songs_state: TableState::default(),
+            playlist_contents: Vec::new(),
+        };
+        app.refresh_playlist_view().await?;
+        Ok(app)
     }
 
-    pub fn tick(&mut self) -> AppResult<()> {
-        self.conn.update_status();
-        self.update_queue();
-
-        // Deals with database update
-        if self.should_update_song_list && self.conn.status.updating_db.is_none() {
-                // Update the songs list
-                self.conn.songs_filenames = self
-                    .conn
-                    .conn
-                    .listall()?
-                    .into_iter()
-                    .map(|x| x.file)
-                    .collect();
-
-                self.browser.update_directory(&mut self.conn)?;
-
-                self.should_update_song_list = false;
+    pub async fn apply_snapshot(&mut self, snapshot: MpdSnapshot) -> AppResult<()> {
+        let MpdSnapshot {
+            status,
+            stats,
+            current_song,
+            queue,
+        } = snapshot;
+        self.conn.apply_snapshot(status, stats, current_song);
+        self.queue_list.list = queue;
+        if self.queue_list.list.is_empty() {
+            self.queue_list.index = 0;
+        } else {
+            self.queue_list.index = self.queue_list.index.min(self.queue_list.list.len() - 1);
         }
 
+        if self.should_update_song_list && self.conn.status.updating_db.is_none() {
+            self.conn.refresh_song_list().await?;
+            self.browser.update_directory(&mut self.conn).await?;
+            self.should_update_song_list = false;
+        }
         Ok(())
     }
 
@@ -123,340 +132,375 @@ impl App {
         self.running = false;
     }
 
-    pub fn get_queue(conn: &mut Connection, vec: &mut Vec<Song>) {
-        conn.conn.queue().unwrap().into_iter().for_each(|x| {
-            vec.push(x);
-        });
+    pub async fn update_queue(&mut self) -> AppResult<()> {
+        self.queue_list.list = self.conn.client.queue().await?;
+        if self.queue_list.list.is_empty() {
+            self.queue_list.index = 0;
+        } else {
+            self.queue_list.index = self.queue_list.index.min(self.queue_list.list.len() - 1);
+        }
+        Ok(())
     }
 
-    // Rescan the queue into queue_list
-    pub fn update_queue(&mut self) {
-        self.queue_list.list.clear();
-        Self::get_queue(&mut self.conn, &mut self.queue_list.list);
+    pub async fn refresh_playlists(&mut self) -> AppResult<()> {
+        self.pl_list.list = self.conn.client.playlists().await?;
+        self.pl_list.list.sort();
+        self.pl_list.index = self
+            .pl_list
+            .index
+            .min(self.pl_list.list.len().saturating_sub(1));
+        self.append_list = Self::get_append_list(&mut self.conn).await?;
+        self.refresh_playlist_view().await
     }
 
-    pub fn get_playlist(conn: &mut Client) -> AppResult<Vec<String>> {
-        let list: Vec<String> = conn.playlists()?.iter().map(|p| p.clone().name).collect();
-        Ok(list)
+    pub async fn refresh_playlist_view(&mut self) -> AppResult<()> {
+        self.playlist_contents = match self.pl_list.list.get(self.pl_list.index) {
+            Some(name) => self.conn.client.playlist(name).await?,
+            None => Vec::new(),
+        };
+        self.playlist_song_index = self
+            .playlist_song_index
+            .min(self.playlist_contents.len().saturating_sub(1));
+        Ok(())
     }
 
-    pub fn get_append_list(conn: &mut Client) -> AppResult<ContentList<String>> {
+    pub async fn delete_selected_playlist_song(&mut self) -> AppResult<()> {
+        let Some(playlist) = self.pl_list.list.get(self.pl_list.index) else {
+            return Ok(());
+        };
+        if self.playlist_song_index >= self.playlist_contents.len() {
+            return Ok(());
+        }
+        self.conn
+            .client
+            .delete_playlist_song(playlist, self.playlist_song_index)
+            .await?;
+        self.refresh_playlist_view().await
+    }
+
+    pub async fn move_selected_playlist_song(&mut self, down: bool) -> AppResult<()> {
+        let Some(playlist) = self.pl_list.list.get(self.pl_list.index) else {
+            return Ok(());
+        };
+        let target = if down {
+            self.playlist_song_index.checked_add(1)
+        } else {
+            self.playlist_song_index.checked_sub(1)
+        };
+        let Some(target) = target.filter(|target| *target < self.playlist_contents.len()) else {
+            return Ok(());
+        };
+        self.conn
+            .client
+            .move_playlist_song(playlist, self.playlist_song_index, target)
+            .await?;
+        self.playlist_song_index = target;
+        self.refresh_playlist_view().await
+    }
+
+    pub async fn delete_selected_playlist(&mut self) -> AppResult<()> {
+        let Some(playlist) = self.pl_list.list.get(self.pl_list.index) else {
+            return Ok(());
+        };
+        self.conn.client.delete_playlist(playlist).await?;
+        self.refresh_playlists().await?;
+        Ok(())
+    }
+
+    pub async fn play_selected_playlist_song(&mut self) -> AppResult<()> {
+        let Some(playlist) = self.pl_list.list.get(self.pl_list.index) else {
+            return Ok(());
+        };
+        if self.playlist_song_index >= self.playlist_contents.len() {
+            return Ok(());
+        }
+        let queue_position = self.conn.client.queue().await?.len();
+        self.conn.client.append_playlist(playlist).await?;
+        self.conn
+            .client
+            .play(Some((queue_position + self.playlist_song_index) as u32))
+            .await?;
+        self.update_queue().await?;
+        self.conn.update_status().await
+    }
+
+    pub async fn get_append_list(conn: &mut Connection) -> AppResult<ContentList<String>> {
         let mut list = ContentList::new();
         list.list.push("Current Playlist".to_string());
         list.list.push("New Playlist".to_string());
-        for item in Self::get_playlist(conn)? {
-            list.list.push(item.to_string());
-        }
-
+        list.list.extend(conn.client.playlists().await?);
         Ok(list)
     }
 
-    /// Handles the <Space> event key
-    pub fn handle_add_or_remove_from_current_playlist(&mut self) -> AppResult<()> {
+    pub async fn toggle_selected_item(&mut self) -> AppResult<()> {
         match self.selected_tab {
             SelectedTab::DirectoryBrowser => {
-                let (content_type, content) =
-                    self.browser.filetree.get(self.browser.selected).unwrap();
-                if content_type == "directory" {
-                    let file = format!("{}/{}", self.browser.path, content);
-                    let songs = self.conn.conn.listfiles(&file).unwrap_or_default();
-                    for (t, f) in songs.iter() {
-                        if t == "file"
-                            && Path::new(&f).has_extension(&[
-                                "mp3", "ogg", "flac", "m4a", "wav", "aac", "opus", "ape", "wma",
-                                "mpc", "aiff", "dff", "mp2", "mka",
-                            ])
-                        {
-                            let path = file.clone() + "/" + f;
-                            let full_path = path.strip_prefix("./").unwrap_or("");
-                            let song = self.conn.get_song_with_only_filename(full_path);
-                            self.conn.conn.push(&song)?;
+                let Some(entry) = self.browser.entries.get(self.browser.selected).cloned() else {
+                    return Ok(());
+                };
+                match entry {
+                    BrowserEntry::Directory(name) => {
+                        let path = join_library_path(&self.browser.path, &name);
+                        for (entry_type, file) in self.conn.client.list_files(&path).await? {
+                            if entry_type == "file" && is_audio_file(&file) {
+                                self.conn.client.add(&file).await?;
+                            }
                         }
                     }
-                } else if content_type == "file" {
-                    let mut status = false;
-                    for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-                        let song_path = song.file.split('/').last().unwrap_or_default();
-                        if song_path.eq(content) {
-                            self.conn.conn.delete(i as u32).unwrap();
-                            status = true;
+                    BrowserEntry::Song(song) => {
+                        let positions: Vec<u32> = self
+                            .queue_list
+                            .list
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(index, queued)| {
+                                (queued.file == song.file).then_some(index as u32)
+                            })
+                            .collect();
+                        if positions.is_empty() {
+                            self.conn.client.add(&song.file).await?;
+                        } else {
+                            for position in positions.into_iter().rev() {
+                                self.conn.client.delete(position).await?;
+                            }
                         }
-                    }
-
-                    if !status {
-                        let mut filename = format!("{}/{}", self.browser.path, content);
-
-                        // Remove "./" from the beginning of filename
-                        filename.remove(0);
-                        filename.remove(0);
-
-                        let song = self.conn.get_song_with_only_filename(&filename);
-                        self.conn.conn.push(&song)?;
-
-                        // updating queue, to avoid multiple pushes of the same songs if we enter multiple times before the queue gets updated
-                        self.update_queue();
                     }
                 }
-
-                // Highlight next row if possible
-                if self.browser.selected != self.browser.filetree.len() - 1 {
+                if self.browser.selected < self.browser.entries.len().saturating_sub(1) {
                     self.browser.selected += 1;
                 }
             }
-
             SelectedTab::Queue => {
-                if self.queue_list.list.is_empty() {
-                    return Ok(());
-                }
-                let file = self
-                    .queue_list
-                    .list
-                    .get(self.queue_list.index)
-                    .unwrap()
-                    .file
-                    .to_string();
-
-                for (i, song) in self.queue_list.list.clone().iter().enumerate() {
-                    if song.file.eq(&file) {
-                        self.conn.conn.delete(i as u32).unwrap();
-                        if self.queue_list.index == self.queue_list.list.len() - 1
-                            && self.queue_list.index != 0
-                        {
-                            self.queue_list.index -= 1;
-                        }
-                    }
+                if !self.queue_list.list.is_empty() {
+                    self.conn
+                        .client
+                        .delete(self.queue_list.index as u32)
+                        .await?;
                 }
             }
-
-            _ => {}
+            SelectedTab::Playlists => {}
         }
-
-        self.update_queue();
-        self.conn.update_status();
+        self.update_queue().await?;
+        self.conn.update_status().await?;
         Ok(())
     }
 
-    /// Cycle through tabs
-    pub fn cycle_tabls(&mut self) {
+    pub fn cycle_tabs(&mut self) {
         self.selected_tab = match self.selected_tab {
             SelectedTab::Queue => SelectedTab::DirectoryBrowser,
             SelectedTab::DirectoryBrowser => SelectedTab::Playlists,
-            SelectedTab::Playlists => SelectedTab::DirectoryBrowser,
+            SelectedTab::Playlists => SelectedTab::Queue,
         };
     }
 
-    /// handles the Enter event on the directory browser
-    pub fn handle_enter(&mut self) -> AppResult<()> {
-        let browser = &mut self.browser;
-        let (t, path) = browser.filetree.get(browser.selected).unwrap();
-        if t == "directory" {
-            if path != "." {
-                browser.prev_path.clone_from(&browser.path);
-                browser.path = browser.prev_path.clone() + "/" + path;
-                browser.update_directory(&mut self.conn)?;
-                browser.prev_selected = browser.selected;
-                browser.selected = 0;
+    pub async fn handle_enter(&mut self) -> AppResult<()> {
+        let Some(entry) = self.browser.entries.get(self.browser.selected).cloned() else {
+            return Ok(());
+        };
+        match entry {
+            BrowserEntry::Directory(name) => {
+                self.browser.prev_selected = self.browser.selected;
+                self.browser.path = join_library_path(&self.browser.path, &name);
+                self.browser.selected = 0;
+                self.browser.update_directory(&mut self.conn).await?;
             }
-        } else {
-            let index = self.queue_list.list.iter().position(|x| {
-                let file = x.file.split('/').last().unwrap_or_default();
-                file.eq(path)
-            });
-
-            if index.is_some() {
-                self.conn.conn.switch(index.unwrap() as u32)?;
-            } else {
-                let mut filename = format!("{}/{}", browser.path, path);
-
-                // Remove "./" from the beginning of filename
-                filename.remove(0);
-                filename.remove(0);
-
-                let song = self.conn.get_song_with_only_filename(&filename);
-                self.conn.push(&song)?;
-
-                // updating queue, to avoid multiple pushes of the same songs if we enter multiple times before the queue gets updated
-                self.update_queue();
+            BrowserEntry::Song(song) => {
+                if let Some(index) = self
+                    .queue_list
+                    .list
+                    .iter()
+                    .position(|queued| queued.file == song.file)
+                {
+                    self.conn.client.play(Some(index as u32)).await?;
+                } else {
+                    self.conn.push(&song).await?;
+                    self.update_queue().await?;
+                }
+                self.conn.update_status().await?;
             }
         }
         Ok(())
     }
 
-    // Cursor movements
-    pub fn move_cursor_left(&mut self) {
-        match self.inputmode {
-            InputMode::PlaylistRename => {
-                let cursor_moved_left = self.pl_cursor_pos.saturating_sub(1);
-                self.pl_cursor_pos = self.clamp_cursor(cursor_moved_left);
+    pub async fn append_selected_to(&mut self) -> AppResult<()> {
+        let Some(playlist) = self.append_list.list.get(self.append_list.index).cloned() else {
+            return Ok(());
+        };
+        let songs = match self.selected_tab {
+            SelectedTab::Queue => self
+                .queue_list
+                .list
+                .get(self.queue_list.index)
+                .cloned()
+                .into_iter()
+                .collect(),
+            SelectedTab::DirectoryBrowser => {
+                let Some(entry) = self.browser.entries.get(self.browser.selected).cloned() else {
+                    return Ok(());
+                };
+                match entry {
+                    BrowserEntry::Song(song) => vec![song],
+                    BrowserEntry::Directory(name) => {
+                        let path = join_library_path(&self.browser.path, &name);
+                        self.conn
+                            .client
+                            .list_files(&path)
+                            .await?
+                            .into_iter()
+                            .filter_map(|(kind, file)| {
+                                (kind == "file" && is_audio_file(&file))
+                                    .then(|| Connection::song_from_file(&file))
+                            })
+                            .collect()
+                    }
+                }
             }
-            InputMode::Editing => {
-                let cursor_moved_left = self.search_cursor_pos.saturating_sub(1);
-                self.search_cursor_pos = self.clamp_cursor(cursor_moved_left);
+            SelectedTab::Playlists => {
+                let Some(name) = self.pl_list.list.get(self.pl_list.index) else {
+                    return Ok(());
+                };
+                self.conn.client.playlist(name).await?
             }
-            InputMode::NewPlaylist => {
-                let cursor_moved_left = self.pl_new_pl_cursor_pos.saturating_sub(1);
-                self.pl_new_pl_cursor_pos = self.clamp_cursor(cursor_moved_left);
+        };
+
+        if playlist == "Current Playlist" {
+            if self.selected_tab == SelectedTab::Playlists {
+                if let Some(name) = self.pl_list.list.get(self.pl_list.index) {
+                    self.conn.load_playlist(name).await?;
+                    self.update_queue().await?;
+                }
+            } else {
+                for song in songs {
+                    self.conn.client.add(&song.file).await?;
+                }
+                self.update_queue().await?;
             }
-            _ => {}
+        } else if playlist == "New Playlist" {
+            self.pl_new_pl_songs_buffer = songs;
+            self.inputmode = InputMode::NewPlaylist;
+        } else {
+            for song in songs {
+                self.conn.add_to_playlist(&playlist, &song).await?;
+            }
+            self.refresh_playlists().await?;
         }
+        self.playlist_popup = false;
+        self.append_list.index = 0;
+        Ok(())
+    }
+
+    pub fn move_cursor_left(&mut self) {
+        let cursor = self.cursor_position().saturating_sub(1);
+        self.set_cursor_position(cursor);
     }
 
     pub fn move_cursor_right(&mut self) {
+        let cursor = self.cursor_position().saturating_add(1);
+        self.set_cursor_position(cursor);
+    }
+
+    fn cursor_position(&self) -> usize {
         match self.inputmode {
-            InputMode::PlaylistRename => {
-                let cursor_moved_right = self.pl_cursor_pos.saturating_add(1);
-                self.pl_cursor_pos = self.clamp_cursor(cursor_moved_right);
-            }
-            InputMode::Editing => {
-                let cursor_moved_right = self.search_cursor_pos.saturating_add(1);
-                self.search_cursor_pos = self.clamp_cursor(cursor_moved_right);
-            }
-
-            InputMode::NewPlaylist => {
-                let cursor_moved_right = self.pl_new_pl_cursor_pos.saturating_add(1);
-                self.pl_new_pl_cursor_pos = self.clamp_cursor(cursor_moved_right);
-            }
-
-            _ => {}
+            InputMode::PlaylistRename => self.pl_cursor_pos,
+            InputMode::Editing => self.search_cursor_pos,
+            InputMode::NewPlaylist => self.pl_new_pl_cursor_pos,
+            InputMode::Normal => 0,
         }
     }
 
-    pub fn enter_char(&mut self, new_char: char) {
+    fn set_cursor_position(&mut self, position: usize) {
+        let length = match self.inputmode {
+            InputMode::PlaylistRename => self.pl_newname_input.chars().count(),
+            InputMode::Editing => self.search_input.chars().count(),
+            InputMode::NewPlaylist => self.pl_new_pl_input.chars().count(),
+            InputMode::Normal => 0,
+        };
+        let position = position.min(length);
         match self.inputmode {
-            InputMode::PlaylistRename => {
-                self.pl_newname_input.insert(self.pl_cursor_pos, new_char);
-            }
-            InputMode::NewPlaylist => {
-                self.pl_new_pl_input
-                    .insert(self.pl_new_pl_cursor_pos, new_char);
-            }
-            InputMode::Editing => {
-                self.search_input.insert(self.search_cursor_pos, new_char);
-            }
-            _ => {}
+            InputMode::PlaylistRename => self.pl_cursor_pos = position,
+            InputMode::Editing => self.search_cursor_pos = position,
+            InputMode::NewPlaylist => self.pl_new_pl_cursor_pos = position,
+            InputMode::Normal => {}
         }
+    }
 
+    pub fn enter_char(&mut self, character: char) {
+        let (text, cursor) = match self.inputmode {
+            InputMode::PlaylistRename => (&mut self.pl_newname_input, self.pl_cursor_pos),
+            InputMode::Editing => (&mut self.search_input, self.search_cursor_pos),
+            InputMode::NewPlaylist => (&mut self.pl_new_pl_input, self.pl_new_pl_cursor_pos),
+            InputMode::Normal => return,
+        };
+        let byte_index = text
+            .char_indices()
+            .nth(cursor)
+            .map(|(index, _)| index)
+            .unwrap_or(text.len());
+        text.insert(byte_index, character);
         self.move_cursor_right();
     }
 
     pub fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = match self.inputmode {
-            InputMode::PlaylistRename => self.pl_cursor_pos != 0,
-            InputMode::NewPlaylist => self.pl_new_pl_cursor_pos != 0,
-            InputMode::Editing => self.search_cursor_pos != 0,
-            _ => false,
-        };
-
-        if is_not_cursor_leftmost {
-            // Method "remove" is not used on the saved text for deleting the selected char.
-            // Reason: Using remove on String works on bytes instead of the chars.
-            // Using remove would require special care because of char boundaries.
-
-            let current_index = match self.inputmode {
-                InputMode::Editing => self.search_cursor_pos,
-                InputMode::PlaylistRename => self.pl_cursor_pos,
-                InputMode::NewPlaylist => self.pl_new_pl_cursor_pos,
-                _ => 0,
-            };
-
-            let from_left_to_current_index = current_index - 1;
-
-            if self.inputmode == InputMode::PlaylistRename {
-                let before_char_to_delete = self
-                    .pl_newname_input
-                    .chars()
-                    .take(from_left_to_current_index);
-                let after_char_to_delete = self.pl_newname_input.chars().skip(current_index);
-
-                self.pl_newname_input = before_char_to_delete.chain(after_char_to_delete).collect();
-                self.move_cursor_left();
-            } else if self.inputmode == InputMode::NewPlaylist {
-                let before_char_to_delete = self
-                    .pl_new_pl_input
-                    .chars()
-                    .take(from_left_to_current_index);
-                let after_char_to_delete = self.pl_new_pl_input.chars().skip(current_index);
-
-                self.pl_new_pl_input = before_char_to_delete.chain(after_char_to_delete).collect();
-                self.move_cursor_left();
-            } else if self.inputmode == InputMode::Editing {
-                let before_char_to_delete =
-                    self.search_input.chars().take(from_left_to_current_index);
-                let after_char_to_delete = self.search_input.chars().skip(current_index);
-
-                self.search_input = before_char_to_delete.chain(after_char_to_delete).collect();
-                self.move_cursor_left();
-            }
+        let cursor = self.cursor_position();
+        if cursor == 0 {
+            return;
         }
-    }
-
-    pub fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        match self.inputmode {
-            InputMode::PlaylistRename => new_cursor_pos.clamp(0, self.pl_newname_input.len()),
-            InputMode::NewPlaylist => new_cursor_pos.clamp(0, self.pl_new_pl_input.len()),
-            InputMode::Editing => new_cursor_pos.clamp(0, self.search_input.len()),
-            _ => 0,
+        let text = match self.inputmode {
+            InputMode::PlaylistRename => &mut self.pl_newname_input,
+            InputMode::Editing => &mut self.search_input,
+            InputMode::NewPlaylist => &mut self.pl_new_pl_input,
+            InputMode::Normal => return,
+        };
+        let start = text.char_indices().nth(cursor - 1).map(|(i, _)| i);
+        let end = text
+            .char_indices()
+            .nth(cursor)
+            .map(|(i, _)| i)
+            .unwrap_or(text.len());
+        if let Some(start) = start {
+            text.replace_range(start..end, "");
+            self.move_cursor_left();
         }
     }
 
     pub fn reset_cursor(&mut self) {
-        match self.inputmode {
-            InputMode::Editing => {
-                self.search_cursor_pos = 0;
-            }
-            InputMode::PlaylistRename => {
-                self.pl_cursor_pos = 0;
-            }
-            InputMode::NewPlaylist => {
-                self.pl_new_pl_cursor_pos = 0;
-            }
-            _ => {}
-        }
+        self.set_cursor_position(0);
     }
 
-    /// Given time in seconds, convert it to hh:mm:ss
     pub fn format_time(time: Duration) -> String {
-        let time = time.as_secs();
-        let h = time / 3600;
-        let m = (time % 3600) / 60;
-        let s = (time % 3600) % 60;
-        if h == 0 {
-            format!("{:02}:{:02}", m, s)
+        let seconds = time.as_secs();
+        let hours = seconds / 3600;
+        let minutes = (seconds % 3600) / 60;
+        let seconds = seconds % 60;
+        if hours == 0 {
+            format!("{minutes:02}:{seconds:02}")
         } else {
-            format!("{:02}:{:02}:{:02}", h, m, s)
+            format!("{hours:02}:{minutes:02}:{seconds:02}")
         }
     }
 
-    // Mouse event handlers
     pub fn handle_scroll_up(&mut self) {
         match self.selected_tab {
-            SelectedTab::Queue => {
-                self.queue_list.prev();
-            }
-            SelectedTab::DirectoryBrowser => {
-                self.browser.prev();
-            }
-            SelectedTab::Playlists => {
-                self.pl_list.prev();
-            }
+            SelectedTab::Queue => self.queue_list.prev(),
+            SelectedTab::DirectoryBrowser => self.browser.prev(),
+            SelectedTab::Playlists => self.pl_list.prev(),
         }
     }
 
     pub fn handle_scroll_down(&mut self) {
         match self.selected_tab {
-            SelectedTab::Queue => {
-                self.queue_list.next();
-            }
-            SelectedTab::DirectoryBrowser => {
-                self.browser.next();
-            }
-            SelectedTab::Playlists => {
-                self.pl_list.next();
-            }
+            SelectedTab::Queue => self.queue_list.next(),
+            SelectedTab::DirectoryBrowser => self.browser.next(),
+            SelectedTab::Playlists => self.pl_list.next(),
         }
     }
+}
 
-    pub fn handle_mouse_left_click(&mut self, _x: u16, _y: u16) -> AppResult<()> {
-        Ok(())
+pub fn join_library_path(parent: &str, child: &str) -> String {
+    let parent = parent.trim_matches('/').trim_start_matches("./");
+    if parent.is_empty() || parent == "." {
+        child.trim_start_matches("./").to_string()
+    } else {
+        format!("{parent}/{}", child.trim_start_matches("./"))
     }
 }
