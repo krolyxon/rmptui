@@ -6,34 +6,20 @@ pub struct ContentList<T> {
 
 impl<T> ContentList<T> {
     pub fn new() -> Self {
-        ContentList {
+        Self {
             list: Vec::new(),
             index: 0,
         }
     }
 
-    // Go to next item in list
     pub fn next(&mut self) {
-        let len = self.list.len();
-        if len != 0 && self.index < len - 1 {
-            self.index += 1;
+        if let Some(last) = self.list.len().checked_sub(1) {
+            self.index = self.index.saturating_add(1).min(last);
         }
     }
 
-    /// Go to previous item in list
     pub fn prev(&mut self) {
-        if self.index != 0 {
-            self.index -= 1;
-        }
-    }
-
-    pub fn reset_index(&mut self) {
-        self.index = 0;
-    }
-
-    /// Returns the self.list[self.index] item
-    pub fn get_item_at_current_index(&mut self) -> &T {
-        self.list.get(self.index).unwrap()
+        self.index = self.index.saturating_sub(1);
     }
 }
 

@@ -1,23 +1,14 @@
-/// Handle mpd connection
-pub mod connection;
+//! An asynchronous terminal client for Music Player Daemon.
 
-/// Widget renderer
-pub mod ui;
-
-/// Terminal user Interface
-pub mod tui;
-
-/// Content list
-pub mod list;
-
-/// File Browser
-pub mod browser;
-
-/// Event Handler/ keymaps
-pub mod event_handler;
-
-/// Application
 pub mod app;
-
-/// Utilities
+pub mod browser;
+pub mod config;
+pub mod connection;
+pub mod event_handler;
+pub mod list;
+pub mod tui;
+pub mod ui;
 pub mod utils;
+
+/// The application's error type.
+pub type AppResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;

@@ -1,22 +1,28 @@
 [package]
 name = "rmptui"
 authors = ["krolyxon"]
-description = """
-a fast and minimal tui mpd client
-"""
+description = "A fast and minimal terminal MPD client"
 readme = "README.md"
 version = "0.1.6"
 edition = "2021"
+license = "AGPL-3.0-only"
 repository = "https://github.com/krolyxon/rmptui"
-keywords = ["rmptui", "mpd", "music", "cli", "tui", "client"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+keywords = ["mpd", "music", "cli", "tui", "client"]
 
 [dependencies]
-mpd = "0.1.0"
-simple-dmenu = "0.1.0"
-ratatui = { version = "0.26.2", default-features = false, features = [
-    'crossterm',
+ratatui = { version = "0.30.2", default-features = false, features = [
+    "crossterm_0_29",
 ] }
-crossterm = "0.27.0"
+crossterm = { version = "0.29.0", features = ["event-stream"] }
 rust-fuzzy-search = "0.1.1"
+futures-util = "0.3.34"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.8"
+tokio = { version = "1.53.3", features = [
+    "macros",
+    "rt-multi-thread",
+    "net",
+    "io-util",
+    "time",
+    "sync",
+] }

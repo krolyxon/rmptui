@@ -1,32 +1,32 @@
-use std::io;
 use crate::ui;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{self, *};
+use std::io;
 use std::panic;
 
-use crate::app::{App, AppResult};
-use crate::event_handler::event::EventHandler;
+use crate::{app::App, AppResult};
 
 pub type CrosstermTerminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stderr>>;
 
 #[derive(Debug)]
 pub struct Tui {
     terminal: CrosstermTerminal,
-    pub events: EventHandler,
 }
 
 impl Tui {
-    pub fn new(terminal: CrosstermTerminal, events: EventHandler) -> Self {
-        Self { terminal, events }
+    pub fn new(terminal: CrosstermTerminal) -> Self {
+        Self { terminal }
     }
 
     pub fn init(&mut self) -> AppResult<()> {
         terminal::enable_raw_mode()?;
-        crossterm::execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+        crossterm::execute!(io::stderr(), EnterAlternateScreen, EnableMouseCapture)?;
 
         let panic_hook = panic::take_hook();
         panic::set_hook(Box::new(move |panic| {
-            Self::reset().expect("failed to reset the terminal");
+            if let Err(error) = Self::reset() {
+                eprintln!("failed to reset the terminal: {error}");
+            }
             panic_hook(panic);
         }));
         Ok(())

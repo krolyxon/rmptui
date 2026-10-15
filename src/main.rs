@@ -1,44 +1,167 @@
+use std::{env, io, net::Ipv6Addr, str::FromStr, time::Duration};
+
+use crossterm::event::{Event as CrosstermEvent, EventStream, KeyEventKind};
+use futures_util::StreamExt;
 use ratatui::prelude::*;
-use rmptui::app::App;
-use rmptui::app::AppResult;
-use rmptui::event_handler::event::Event;
-use rmptui::event_handler::event::EventHandler;
-use rmptui::event_handler::handler;
-use rmptui::tui;
-use std::env;
-use std::io;
+use rmptui::{
+    app::App,
+    config::Config,
+    connection::{MpdClient, MpdSnapshot},
+    event_handler::handler,
+    tui, AppResult,
+};
+use tokio::{sync::mpsc, time};
 
-fn main() -> AppResult<()> {
-    // Connection
-    let env_host = env::var("MPD_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let env_port = env::var("MPD_PORT").unwrap_or_else(|_| "6600".to_string());
-    let url = format!("{}:{}", env_host, env_port);
-    let mut app = App::builder(&url)?;
+#[tokio::main]
+async fn main() -> AppResult<()> {
+    let (config, config_path) = Config::load_or_create()?;
+    eprintln!("Using configuration: {}", config_path.display());
 
-    // UI
+    let configured_host = env::var("MPD_HOST").unwrap_or_else(|_| config.mpd.host.clone());
+    let (host, password) = configured_host
+        .split_once('@')
+        .map(|(password, host)| (host, Some(password.to_string())))
+        .unwrap_or_else(|| {
+            (
+                configured_host.as_str(),
+                (!config.mpd.password.is_empty()).then(|| config.mpd.password.clone()),
+            )
+        });
+    if host.is_empty() {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "MPD host cannot be empty").into());
+    }
+    let port = env::var("MPD_PORT")
+        .map(|port| {
+            port.parse::<u16>().map_err(|error| {
+                io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("invalid MPD_PORT value `{port}`: {error}"),
+                )
+            })
+        })
+        .unwrap_or(Ok(config.mpd.port))?;
+    if port == 0 {
+        return Err(io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "MPD port must be between 1 and 65535",
+        )
+        .into());
+    }
+    let address = mpd_address(host, port);
+    let mut app = App::new(&address, password.as_deref(), config).await?;
+
     let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend)?;
-    let events = EventHandler::new(1000);
-    let mut tui = tui::Tui::new(terminal, events);
+    let mut tui = tui::Tui::new(terminal);
     tui.init()?;
 
-    // initial directory read
-    app.browser.update_directory(&mut app.conn)?;
+    let (updates_tx, mut updates_rx) = mpsc::channel(16);
+    let watcher_address = address.clone();
+    let watcher_password = password.clone();
+    let watcher =
+        tokio::spawn(async move { watch_mpd(watcher_address, watcher_password, updates_tx).await });
+    let mut terminal_events = EventStream::new();
+    let mut redraw = time::interval(Duration::from_millis(50));
+    redraw.set_missed_tick_behavior(time::MissedTickBehavior::Skip);
 
-    // initially set the queue's highlighted item to the current playing item
-    if let Ok(item) = app.conn.conn.currentsong() {
-        app.queue_list.index = item.unwrap_or_default().place.unwrap_or_default().pos as usize;
+    let run_result: AppResult<()> = async {
+        while app.running {
+            tui.draw(&mut app)?;
+            tokio::select! {
+                event = terminal_events.next() => {
+                    match event {
+                        Some(Ok(CrosstermEvent::Key(key)))
+                            if key.kind != KeyEventKind::Release =>
+                        {
+                            handler::handle_key_events(key, &mut app).await?;
+                        }
+                        Some(Ok(CrosstermEvent::Key(_))) => {}
+                        Some(Ok(CrosstermEvent::Mouse(mouse))) => {
+                            handler::handle_mouse_events(mouse, &mut app).await?;
+                        }
+                        Some(Ok(CrosstermEvent::Resize(_, _)))
+                        | Some(Ok(CrosstermEvent::FocusGained))
+                        | Some(Ok(CrosstermEvent::FocusLost))
+                        | Some(Ok(CrosstermEvent::Paste(_))) => {}
+                        Some(Err(error)) => {
+                            return Err(Box::new(error) as Box<dyn std::error::Error + Send + Sync>);
+                        }
+                        None => {
+                            return Err(std::io::Error::other("terminal event stream ended").into());
+                        }
+                    }
+                }
+                _ = redraw.tick() => {}
+                snapshot = updates_rx.recv() => {
+                    match snapshot {
+                        Some(snapshot) => app.apply_snapshot(snapshot).await?,
+                        None => {
+                            return Err(std::io::Error::other(
+                                "MPD change watcher stopped unexpectedly",
+                            )
+                            .into());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
+    .await;
 
-    while app.running {
-        tui.draw(&mut app)?;
-        match tui.events.next()? {
-            Event::Tick => app.tick()?,
-            Event::Key(key_event) => handler::handle_key_events(key_event, &mut app)?,
-            Event::Mouse(mouse_event) => handler::handle_mouse_events(mouse_event, &mut app)?,
-            Event::Resize(_, _) => {}
+    watcher.abort();
+    let exit_result = tui.exit();
+    run_result?;
+    exit_result?;
+    Ok(())
+}
+
+async fn watch_mpd(
+    address: String,
+    password: Option<String>,
+    updates: mpsc::Sender<MpdSnapshot>,
+) -> AppResult<()> {
+    let mut client = MpdClient::connect(&address, password.as_deref()).await?;
+    loop {
+        client.idle().await?;
+        let snapshot = client.snapshot().await?;
+        if updates.send(snapshot).await.is_err() {
+            return Ok(());
         }
     }
+}
 
-    Ok(())
+fn mpd_address(host: &str, port: u16) -> String {
+    if host.starts_with('[') && host.contains("]:") {
+        host.to_string()
+    } else if let Some(ipv6) = host
+        .strip_prefix('[')
+        .and_then(|host| host.strip_suffix(']'))
+        .filter(|host| Ipv6Addr::from_str(host).is_ok())
+    {
+        format!("[{ipv6}]:{port}")
+    } else if host.contains(':') && Ipv6Addr::from_str(host).is_ok() {
+        format!("[{host}]:{port}")
+    } else if host
+        .rsplit_once(':')
+        .is_some_and(|(_, suffix)| suffix.parse::<u16>().is_ok())
+    {
+        host.to_string()
+    } else {
+        format!("{host}:{port}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::mpd_address;
+
+    #[test]
+    fn formats_mpd_host_addresses() {
+        assert_eq!(mpd_address("localhost", 6600), "localhost:6600");
+        assert_eq!(mpd_address("localhost:6601", 6600), "localhost:6601");
+        assert_eq!(mpd_address("[::1]", 6600), "[::1]:6600");
+        assert_eq!(mpd_address("[::1]:6601", 6600), "[::1]:6601");
+        assert_eq!(mpd_address("::1", 6600), "[::1]:6600");
+    }
 }

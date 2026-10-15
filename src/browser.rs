@@ -1,137 +1,114 @@
 use std::path::Path;
 
-use mpd::Song;
+use crate::{
+    connection::{Connection, Song},
+    utils::is_audio_file,
+    AppResult,
+};
 
-use crate::{app::AppResult, connection::Connection, utils::FileExtension};
-
-#[derive(Debug)]
-/// struct for working with directory browser tab in rmptui
+#[derive(Debug, Default)]
 pub struct FileBrowser {
-    pub filetree: Vec<(String, String)>,
+    pub entries: Vec<BrowserEntry>,
     pub selected: usize,
     pub prev_selected: usize,
     pub path: String,
-    pub prev_path: String,
-    pub songs: Vec<Song>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum BrowserEntry {
+    Directory(String),
+    Song(Song),
+}
+
+impl BrowserEntry {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Directory(name) => name,
+            Self::Song(song) => Path::new(&song.file)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or(&song.file),
+        }
+    }
 }
 
 impl FileBrowser {
-    pub fn new() -> FileBrowser {
-        FileBrowser {
-            filetree: Vec::new(),
-            selected: 0,
-            prev_selected: 0,
+    pub fn new() -> Self {
+        Self {
             path: ".".to_string(),
-            prev_path: ".".to_string(),
-            songs: vec![],
+            ..Self::default()
         }
     }
 
-    pub fn update_directory(&mut self, conn: &mut Connection) -> AppResult<()> {
-        self.filetree.clear();
-        let mut file_vec: Vec<(String, String)> = vec![];
-        let mut dir_vec: Vec<(String, String)> = vec![];
-        for (t, f) in conn.conn.listfiles(self.path.as_str())?.into_iter() {
-            if t == "directory" && !f.starts_with('.') {
-                dir_vec.push((t, f));
-            } else if t == "file"
-                && Path::new(&f).has_extension(&[
-                    "mp3", "ogg", "flac", "m4a", "wav", "aac", "opus", "ape", "wma", "mpc", "aiff",
-                    "dff", "mp2", "mka",
-                ])
+    pub async fn update_directory(&mut self, conn: &mut Connection) -> AppResult<()> {
+        let query_path = self.path.trim_start_matches("./").trim_matches('/');
+        let (directories, songs) = conn.client.ls_info(query_path).await?;
+        let mut entries = Vec::new();
+        for directory in directories {
+            if let Some(name) = Path::new(&directory)
+                .file_name()
+                .and_then(|name| name.to_str())
             {
-                file_vec.push((t, f));
+                if !name.starts_with('.') {
+                    entries.push(BrowserEntry::Directory(name.to_string()));
+                }
             }
         }
 
-        // dir_vec.sort_by(|a, b| a.1.cmp(&b.1));
-        dir_vec.sort_by(|a, b| {
-            let num_a = a.1.parse::<u32>().unwrap_or(u32::MAX);
-            let num_b = b.1.parse::<u32>().unwrap_or(u32::MAX);
-            num_a
-                .cmp(&num_b)
-                .then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
-        });
-
-        file_vec.sort_by(|a, b| {
-            let num_a = a.1.parse::<u32>().unwrap_or(u32::MAX);
-            let num_b = b.1.parse::<u32>().unwrap_or(u32::MAX);
-            num_a
-                .cmp(&num_b)
-                .then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
-        });
-
-        dir_vec.extend(file_vec);
-        self.filetree = dir_vec;
-
-        // Add metadata
-        self.songs.clear();
-        for (t, song) in self.filetree.iter() {
-            if t == "file" {
-                let v = conn
-                    .conn
-                    .lsinfo(Song {
-                        file: (self.path.clone() + "/" + song)
-                            .strip_prefix("./")
-                            .unwrap_or("")
-                            .to_string(),
-                        ..Default::default()
-                    })
-                    .unwrap_or_else(|_| {
-                        vec![Song {
-                            file: "Not a song".to_string(),
-                            ..Default::default()
-                        }]
-                    });
-
-                self.songs.push(v.first().unwrap().clone());
-            } else {
-                let v = Song {
-                    file: "".to_string(),
-                    ..Default::default()
-                };
-
-                self.songs.push(v);
+        for song in songs {
+            let Some(name) = Path::new(&song.file)
+                .file_name()
+                .and_then(|name| name.to_str())
+            else {
+                continue;
+            };
+            if is_audio_file(name) {
+                entries.push(BrowserEntry::Song(song));
             }
         }
 
+        entries.sort_by(|a, b| {
+            let kind_order = |entry: &BrowserEntry| match entry {
+                BrowserEntry::Directory(_) => 0,
+                BrowserEntry::Song(_) => 1,
+            };
+            kind_order(a).cmp(&kind_order(b)).then_with(|| {
+                let name_a = a.name();
+                let name_b = b.name();
+                let number_a = name_a.parse::<u32>().unwrap_or(u32::MAX);
+                let number_b = name_b.parse::<u32>().unwrap_or(u32::MAX);
+                number_a
+                    .cmp(&number_b)
+                    .then_with(|| name_a.to_lowercase().cmp(&name_b.to_lowercase()))
+            })
+        });
+
+        self.entries = entries;
+        self.selected = self.selected.min(self.entries.len().saturating_sub(1));
         Ok(())
     }
 
-    // Go to next item in filetree
     pub fn next(&mut self) {
-        if self.selected < self.filetree.len() - 1 {
+        if self.selected < self.entries.len().saturating_sub(1) {
             self.selected += 1;
         }
     }
 
-    /// Go to previous item in filetree
     pub fn prev(&mut self) {
-        if self.selected != 0 {
-            self.selected -= 1;
-        }
+        self.selected = self.selected.saturating_sub(1);
     }
 
-    /// handles going back event
-    pub fn handle_go_back(&mut self, conn: &mut Connection) -> AppResult<()> {
-        if self.prev_path != "." {
-            let r = self.path.rfind('/');
-            if let Some(r) = r {
-                self.path = self.path.as_str()[..r].to_string();
-                self.update_directory(conn)?;
-            }
-        } else {
-            self.path.clone_from(&self.prev_path);
-            self.update_directory(conn)?;
+    pub async fn handle_go_back(&mut self, conn: &mut Connection) -> AppResult<()> {
+        if self.path != "." {
+            self.path = Path::new(&self.path)
+                .parent()
+                .and_then(Path::to_str)
+                .filter(|path| !path.is_empty())
+                .unwrap_or(".")
+                .to_string();
+            self.update_directory(conn).await?;
         }
-
-        self.selected = self.prev_selected;
+        self.selected = self.prev_selected.min(self.entries.len().saturating_sub(1));
         Ok(())
-    }
-}
-
-impl Default for FileBrowser {
-    fn default() -> Self {
-        Self::new()
     }
 }
