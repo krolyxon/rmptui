@@ -1,6 +1,5 @@
 # rmptui
 
-![LOC](https://tokei.rs/b1/github/krolyxon/rmptui?category=code)
 ![Release](https://img.shields.io/github/v/release/krolyxon/rmptui?color=%23c694ff)
 [![GitHub Downloads](https://img.shields.io/github/downloads/krolyxon/rmptui/total.svg?label=GitHub%20downloads)](https://github.com/krolyxon/rmptui/releases)
 
