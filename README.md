@@ -130,6 +130,10 @@ input_cursor_right = ["Right"]
 input_submit = ["Enter"]
 ```
 
+Runtime errors and panic details are appended to `/tmp/rmptui.log`. If logging
+cannot be initialized, rmptui prints a warning and continues without a log
+file.
+
 Every listed action is configurable in `[keybindings]`; each value is an array
 so actions can have multiple aliases. Remove an alias or set an action to `[]`
 to disable it. A key can be a single character or a named key such as `Enter`,
