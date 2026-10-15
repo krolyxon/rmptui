@@ -8,12 +8,28 @@ use rmptui::{
     config::Config,
     connection::{Connection, MpdSnapshot},
     event_handler::handler,
-    tui, AppResult,
+    logging, tui, AppResult,
 };
 use tokio::{sync::mpsc, time};
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
+    let log_path = std::path::Path::new("/tmp/rmptui.log");
+    if let Err(error) = logging::init(log_path) {
+        eprintln!(
+            "Could not initialize logging at {}: {error}",
+            log_path.display()
+        );
+    }
+
+    let result = run().await;
+    if let Err(error) = &result {
+        logging::error(&format!("application exited with error: {error}"));
+    }
+    result
+}
+
+async fn run() -> AppResult<()> {
     let (config, config_path) = Config::load_or_create()?;
     eprintln!("Using configuration: {}", config_path.display());
 
@@ -58,8 +74,13 @@ async fn main() -> AppResult<()> {
     let (updates_tx, mut updates_rx) = mpsc::channel(16);
     let watcher_address = address.clone();
     let watcher_password = password.clone();
-    let watcher =
-        tokio::spawn(async move { watch_mpd(watcher_address, watcher_password, updates_tx).await });
+    let watcher = tokio::spawn(async move {
+        let result = watch_mpd(watcher_address, watcher_password, updates_tx).await;
+        if let Err(error) = &result {
+            logging::error(&format!("MPD change watcher failed: {error}"));
+        }
+        result
+    });
     let mut terminal_events = EventStream::new();
     let mut redraw = time::interval(Duration::from_millis(50));
     redraw.set_missed_tick_behavior(time::MissedTickBehavior::Skip);
