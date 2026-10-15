@@ -6,7 +6,7 @@ use ratatui::prelude::*;
 use rmptui::{
     app::App,
     config::Config,
-    connection::{MpdClient, MpdSnapshot},
+    connection::{Connection, MpdSnapshot},
     event_handler::handler,
     tui, AppResult,
 };
@@ -121,7 +121,7 @@ async fn watch_mpd(
     password: Option<String>,
     updates: mpsc::Sender<MpdSnapshot>,
 ) -> AppResult<()> {
-    let mut client = MpdClient::connect(&address, password.as_deref()).await?;
+    let mut client = Connection::connect(&address, password.as_deref()).await?;
     loop {
         client.idle().await?;
         let snapshot = client.snapshot().await?;
