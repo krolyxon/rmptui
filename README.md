@@ -5,33 +5,42 @@
 
 **A fast, keyboard-driven MPD client for your terminal.**
 
-rmptui is a lightweight music player interface for [Music Player Daemon
-(MPD)](https://www.musicpd.org/). Browse your library, manage the play queue,
-work with playlists, and control playback without leaving the terminal.
+rmptui is a terminal interface for [Music Player Daemon
+(MPD)](https://www.musicpd.org/) in the spirit of ncmpcpp and rmpc. Browse your
+library, manage the queue and playlists, edit tags, read synced lyrics and
+watch a spectrum visualizer without leaving the terminal.
 
 ![rmptui screenshot](https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/ss.png)
 
-## Highlights
+## Screens
 
-- **Three focused views:** browse your music library, control the current queue,
-  and inspect saved playlists.
-- **Metadata at a glance:** see artist, track, title, album, and duration in
-  the browser and queue.
-- **Fuzzy, repeatable search:** search the current view with `/`; in the song
-  browser, keep the query and cycle matching folders and songs with `n` and
-  `N`.
-- **Playlist tools:** load playlists, add selected tracks or folders to a
-  playlist, create playlists, and rename them.
-- **Queue control:** play, remove, reorder, and append tracks.
-- **Responsive MPD updates:** the client uses MPD's asynchronous `idle`
-  notifications instead of regularly polling the server.
-- **Direct MPD connection:** speaks MPD's standard text protocol over
-  asynchronous TCP; no `mpd` crate or WebSocket proxy is required.
+| Key | Screen | What it does |
+| --- | --- | --- |
+| `1` | **Queue** | The play queue with configurable columns. Play, remove, reorder, mark, shuffle, clear or save it as a playlist. `L` shows a synced lyrics pane next to it. |
+| `2` | **Browse** | Your music folders, ncmpcpp style. Stored playlists are listed at the bottom of the root folder. |
+| `3` | **Playlists** | Stored playlists and their songs: load, play from a song, remove or reorder songs, rename or delete playlists. |
+| `4` | **Library** | Album artists → albums (with year) → songs. `t` switches between AlbumArtist and Artist. |
+| `5` | **Tags** | Edit Title, Artist, Album Artist, Album, Track, Disc, Date, Genre and Comment of one or many songs. |
+| `6` | **Visualizer** | A spectrum analyzer fed by an MPD fifo output. |
+| `7` | **Lyrics** | Synced lyrics that follow playback, or plain lyrics you can scroll. |
+
+Other highlights:
+
+- **Instant controls.** All MPD traffic runs in background tasks over MPD's
+  `idle` notifications, so seeking, volume changes and skipping never wait for
+  the UI, and the UI never waits for the server.
+- **Fuzzy search everywhere.** `/` searches the focused list; `n`/`N` cycle
+  through the matches.
+- **Marks.** `v` marks items; queue removal, add-to-playlist and tag edits
+  then apply to every marked item.
+- **Mouse support.** Click to select, double-click to play/open, scroll with
+  the wheel, click a tab to switch screens and click the progress bar to seek.
+- **TCP or Unix socket**, with password support and automatic reconnection.
 
 ## Requirements
 
 - A running MPD server with its music library configured.
-- Rust and Cargo to build from source.
+- Rust 1.88 or newer and Cargo to build from source.
 
 ## Install
 
@@ -42,9 +51,8 @@ copy it to `/usr/local/bin/rmptui`:
 ./install.sh
 ```
 
-The script uses `sudo` for the system-directory operations when needed. It
-requires Rust and Cargo to build from source. To use a different binary
-directory or uninstall rmptui:
+The script uses `sudo` for the system-directory operations when needed. To use
+a different binary directory or uninstall rmptui:
 
 ```sh
 ./install.sh --bin-dir "$HOME/.local/bin"
@@ -63,170 +71,173 @@ cd rmptui
 cargo run --release
 ```
 
-To build and run without installing, use `cargo run --release`.
+## Configuration
 
-On first launch, rmptui creates a default configuration file at
+On first launch rmptui writes a fully commented configuration to
 `$CONFIG_HOME/rmptui/config.toml`. If `CONFIG_HOME` is not set, it uses
 `$XDG_CONFIG_HOME/rmptui/config.toml`, then `~/.config/rmptui/config.toml`.
-Edit the file and restart rmptui to apply changes:
+Use `rmptui --config FILE` to load a different file, and
+`rmptui --print-default-config` to see every option with its default. Restart
+rmptui to apply changes.
+
+You only need to keep the settings you change: anything left out keeps its
+default, table by table. Unknown options and conflicting key bindings are
+reported with the file and the offending value.
+
+> **Upgrading from 0.1:** the configuration format changed. rmptui refuses to
+> start with a 0.1 file and tells you so; move the old file aside, start
+> rmptui to generate the new one, and copy your MPD settings over.
+
+The main sections:
 
 ```toml
 [mpd]
-host = "127.0.0.1"
+host = "127.0.0.1"      # or a Unix socket path such as "~/.config/mpd/socket"
 port = 6600
-password = "" # Set this only if your MPD server requires a password.
+password = ""
+music_directory = ""    # needed for the tag editor and local .lrc files
 
 [playback]
-seek_seconds = 2
-volume_step = 2
+seek_seconds = 5
+volume_step = 5
 
-[keybindings]
-quit = ["q", "Ctrl+c"]
-clear_queue = ["c", "C"]
-toggle_pause = ["p"]
-pause = ["s"]
-toggle_repeat = ["r"]
-toggle_random = ["z"]
-open_playlist_menu = ["a"]
-seek_forward = ["f"]
-seek_backward = ["b"]
-cycle_tabs = ["Tab"]
-select_queue = ["1"]
-select_browser = ["2"]
-select_playlists = ["3"]
-next_track = [">"]
-previous_track = ["<"]
-volume_up = ["=", "+"]
-volume_down = ["-"]
-toggle_mute = ["m"]
-update_database = ["U"]
-search = ["/"]
-toggle_selected_item = ["Space"]
-search_next = ["n"]
-search_previous = ["N"]
-move_down = ["j", "Down"]
-move_up = ["k", "Up"]
-activate = ["Enter", "l", "Right"]
-go_back = ["h", "Left"]
-go_to_top = ["g"]
-go_to_bottom = ["G"]
-queue_delete = ["d"]
-queue_move_down = ["J"]
-queue_move_up = ["K"]
-playlist_rename = ["R"]
-playlist_focus_contents = ["Right", "l"]
-playlist_focus_list = ["Left", "h"]
-playlist_delete_song = ["d"]
-playlist_move_song_down = ["J"]
-playlist_move_song_up = ["K"]
-playlist_delete = ["D"]
-playlist_load = ["Space", "Enter"]
-popup_close = ["q", "Esc"]
-popup_select = ["Enter"]
-input_cancel = ["Esc"]
-input_backspace = ["Backspace"]
-input_cursor_left = ["Left"]
-input_cursor_right = ["Right"]
-input_submit = ["Enter"]
+[ui]
+startup_screen = "queue"
+mouse = true
+lyrics_pane = false
+queue_columns = [
+    { field = "artist", width = 25 },
+    { field = "track", width = 5 },
+    { field = "title", width = 35 },
+    { field = "album", width = 30 },
+    { field = "duration", width = 7 },
+]
+
+[theme]
+accent = "magenta"      # color names, 256-color indices or "#rrggbb"
+visualizer = ["blue", "cyan", "green", "yellow", "red"]
+
+[lyrics]
+online = true           # look up lyrics on lrclib.net
+cache = true
+
+[visualizer]
+fifo = "/tmp/mpd.fifo"
 ```
 
-Runtime errors and panic details are appended to `/tmp/rmptui.log`. If logging
-cannot be initialized, rmptui prints a warning and continues without a log
-file.
+The MPD connection can also be set with environment variables, which take
+precedence over the file:
 
-Every listed action is configurable in `[keybindings]`; each value is an array
-so actions can have multiple aliases. Remove an alias or set an action to `[]`
-to disable it. A key can be a single character or a named key such as `Enter`,
-`Esc`, `Tab`, `Space`, `Up`, `Down`, `Left`, `Right`, or `Backspace`. Add
-modifiers with `Ctrl+`, `Alt+`, or `Shift+`, for example `Ctrl+x` or
-`Alt+Enter`. Bindings are matched in the current UI context, so avoid assigning
-the same key to different actions that can be active in the same context.
-Characters typed into search and playlist-name fields remain text unless
-configured as an input action.
-
-`playback.seek_seconds` sets the `seek_forward`/`seek_backward` distance, and
-`playback.volume_step` sets the `volume_up`/`volume_down` amount. Supported
-audio formats remain built in. The config stores an MPD password as plain text;
-newly created config files are restricted to the current user.
-
-The MPD connection settings can also be overridden with environment variables:
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `MPD_HOST` | Config file | MPD hostname or address. Use `password@host` to set both host and password. |
-| `MPD_PORT` | Config file | MPD port; an explicit port in `MPD_HOST` takes precedence. |
-
-For example:
+| Variable | Description |
+| --- | --- |
+| `MPD_HOST` | Hostname, address or Unix socket path. Use `password@host` to set both host and password. |
+| `MPD_PORT` | Port; an explicit port in `MPD_HOST` takes precedence. |
 
 ```sh
-MPD_HOST=192.168.1.20 MPD_PORT=6600 ./target/release/rmptui
+MPD_HOST=192.168.1.20 MPD_PORT=6600 rmptui
+MPD_HOST='secret@localhost' rmptui
+MPD_HOST=~/.config/mpd/socket rmptui
 ```
 
-Or, for a password-protected local server:
+Logs (and panic details) are appended to `/tmp/rmptui.log`. Set
+`RMPTUI_LOG=debug` for more detail.
 
-```sh
-MPD_HOST='secret@localhost' ./target/release/rmptui
+### Visualizer
+
+The visualizer reads raw audio from an MPD fifo output. Add this to
+`mpd.conf` and restart MPD:
+
+```
+audio_output {
+    type   "fifo"
+    name   "Visualizer feed"
+    path   "/tmp/mpd.fifo"
+    format "44100:16:2"
+}
 ```
 
-## Controls
+`[visualizer]` must match the `path` and `format`. The fifo is only read while
+the Visualizer screen is visible.
 
-The keys below are the defaults; edit the `[keybindings]` table above to change
-them.
+### Lyrics
 
-### Navigation
+Lyrics are looked up in this order:
+
+1. An `.lrc` file next to the song (`Song.flac` → `Song.lrc`), when the music
+   directory is known.
+2. The cache in `$XDG_CACHE_HOME/rmptui/lyrics` (`~/.cache` by default).
+3. [LRCLIB](https://lrclib.net), a free lyrics database. Results are cached.
+
+Set `lyrics.online = false` to stay offline. `F5` on the Lyrics screen fetches
+the lyrics of the current song again.
+
+### Tag editor
+
+MPD cannot change tags, so the tag editor writes the files directly. That
+requires the music files to be on this machine: set `mpd.music_directory`, or
+connect through MPD's Unix socket so rmptui can ask MPD for it. After saving,
+rmptui asks MPD to rescan the edited folders.
+
+## Key bindings
+
+These are the defaults; every binding is configurable in the `[keys.*]` tables
+of the config. `?` shows the active bindings inside rmptui.
+
+Bindings are grouped by context. A key is looked up in the focused popup or
+screen first, then in `navigation`, then in `global`, so screen bindings
+shadow global ones on that screen (for example `R` renames a playlist on the
+Playlists screen and toggles consume elsewhere).
+
+### Global
 
 | Key | Action |
 | --- | --- |
-| `Tab` | Cycle between Queue, Browser, and Playlists |
-| `1` / `2` / `3` | Open Queue / Browser / Playlists |
-| `j` / `Down` | Move selection down |
-| `k` / `Up` | Move selection up |
-| `g` / `G` | Jump to the top / bottom of the current list |
-| `Enter` / `l` / `Right` | Activate the selected item |
-| `h` / `Left` | Go to the parent directory in the browser |
-| `q` / `Ctrl+C` | Quit |
-
-### Search
-
-1. Press `/` and type a query.
-2. In the browser, press `Enter` to keep the query and return to the list.
-3. Press `n` for the next fuzzy match or `N` for the previous match. Results
-   wrap around when you reach either end.
-4. Press `/` to start a new search, or `Esc` to cancel search input.
-
-Search matches the names shown in the current view. Browser search includes
-both folders and songs.
-
-### Playback and queue
-
-| Key | Action |
-| --- | --- |
+| `1`–`7` | Switch screen |
+| `Tab` / `Shift+Tab` | Next / previous screen |
 | `p` | Toggle play/pause |
-| `s` | Pause |
-| `>` / `<` | Play next / previous track |
-| `f` / `b` | Seek forward / backward by two seconds |
-| `+` / `=` / `-` | Increase / decrease volume |
+| `s` / `x` | Pause / stop |
+| `>` / `<` | Next / previous track |
+| `f` / `b` | Seek forward / backward |
+| `+` `=` / `-` | Volume up / down |
 | `m` | Toggle mute |
-| `r` / `z` | Toggle repeat / random |
-| `d` | Remove the selected queue item |
-| `Space` | Remove a queue item; toggle a browser song in the queue |
-| `J` / `K` | Move the selected queue item down / up |
-| `c` | Clear the queue |
-| `a` | Open the add-to-playlist menu |
-| `U` | Rescan the MPD music database |
+| `r` `z` `y` `R` | Toggle repeat, random, single, consume |
+| `U` | Rescan the music database |
+| `?` `F1` | Show key bindings |
+| `q` `Ctrl+c` | Quit |
 
-### Playlists
+### Lists
 
-The Playlists view has a playlist pane and a contents pane. Select a playlist
-with `j`/`k` and press `Space` or `Enter` to load it into the queue and start
-playback. Press `Right` or `l` to focus its songs and `Left` or `h` to return
-to the playlist pane. In the contents pane, `j`/`k` selects a song, `Enter`
-plays it, `d` removes it from the saved playlist, and `J`/`K` moves it
-down/up. `D` deletes the selected saved playlist. `R` renames a playlist.
+| Key | Action |
+| --- | --- |
+| `j` `k` / arrows | Move down / up |
+| `g` `G` / `Home` `End` | Top / bottom |
+| `Ctrl+d` `Ctrl+u`, `PageDown` `PageUp` | Half page / page |
+| `h` `l` / arrows | Back or previous column / open or next column |
+| `Enter` | Play or open the selected item |
+| `Space` | Add to the queue (toggles songs in the browser) |
+| `a` | Add to the queue, a new playlist or an existing one |
+| `v` / `V` | Mark item / clear marks |
+| `/`, `n` / `N` | Search, next / previous match |
 
-Press `a` to open the add-to-playlist menu; choose **Current Playlist**, **New
-Playlist**, or a saved playlist. When creating a playlist, type its name and
-press `Enter` to save. Playlist contents update after each edit.
+### Screens
+
+| Screen | Key | Action |
+| --- | --- | --- |
+| Queue | `d` `Delete` | Remove the song (or all marked songs) |
+| Queue | `J` / `K` | Move the song down / up |
+| Queue | `c` | Clear the queue (asks first) |
+| Queue | `Z` / `S` | Shuffle / save as playlist |
+| Queue | `o` | Jump to the playing song |
+| Queue | `L` | Toggle the lyrics pane |
+| Playlists | `d`, `J` / `K` | Remove / move the selected song |
+| Playlists | `R` / `D` | Rename / delete the playlist |
+| Library | `t` | Switch between AlbumArtist and Artist |
+| Tags | `Enter` | Edit the selected tag |
+| Tags | `w` / `u` | Write / discard pending changes |
+| Lyrics | `F5` | Fetch lyrics again |
+
+In text fields, `Enter` submits, `Esc` cancels, `Ctrl+w` deletes a word and
+`Ctrl+a` / `Ctrl+e` jump to the start / end.
 
 ## License
 
