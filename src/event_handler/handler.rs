@@ -4,6 +4,7 @@ use rust_fuzzy_search::fuzzy_search_sorted;
 use crate::{
     app::{App, PlaylistFocus, SelectedTab},
     connection::VolumeStatus,
+    tageditor::{self, Transform, FIELDS},
     ui::InputMode,
     AppResult,
 };
@@ -83,6 +84,8 @@ pub async fn handle_key_events(key: KeyEvent, app: &mut App) -> AppResult<()> {
     } else if is_bound(app, "select_playlists", key) {
         app.selected_tab = SelectedTab::Playlists;
         app.refresh_playlist_view().await?;
+    } else if is_bound(app, "select_tags", key) {
+        app.selected_tab = SelectedTab::Tags;
     } else if is_bound(app, "next_track", key) {
         if !app.queue_list.list.is_empty() {
             app.conn.next().await?;
@@ -133,6 +136,7 @@ pub async fn handle_key_events(key: KeyEvent, app: &mut App) -> AppResult<()> {
         SelectedTab::Queue => handle_queue_key(key, app).await?,
         SelectedTab::DirectoryBrowser => handle_browser_key(key, app).await?,
         SelectedTab::Playlists => handle_playlists_key(key, app).await?,
+        SelectedTab::Tags => handle_tags_key(key, app).await?,
     }
     Ok(())
 }
@@ -203,6 +207,22 @@ async fn handle_browser_key(key: KeyEvent, app: &mut App) -> AppResult<()> {
         app.browser.selected = 0;
     } else if is_bound(app, "go_to_bottom", key) {
         app.browser.selected = app.browser.entries.len().saturating_sub(1);
+    } else if is_bound(app, "open_in_tag_editor", key) {
+        if let Some(crate::browser::BrowserEntry::Song(song)) =
+            app.browser.entries.get(app.browser.selected)
+        {
+            let base = app.config.mpd.music_directory.trim().to_string();
+            if base.is_empty() {
+                app.tag_editor.status =
+                    "Set [mpd].music_directory in config.toml first".to_string();
+            } else {
+                let path = std::path::Path::new(&base).join(&song.file);
+                if let Err(error) = app.tag_editor.load(path) {
+                    app.tag_editor.status = format!("Cannot load: {error}");
+                }
+            }
+            app.selected_tab = SelectedTab::Tags;
+        }
     }
     Ok(())
 }
@@ -267,6 +287,109 @@ async fn handle_playlists_key(key: KeyEvent, app: &mut App) -> AppResult<()> {
     if previous_index != app.pl_list.index {
         app.playlist_song_index = 0;
         app.refresh_playlist_view().await?;
+    }
+    Ok(())
+}
+
+async fn handle_tags_key(key: KeyEvent, app: &mut App) -> AppResult<()> {
+    if app.tag_editor.editing {
+        if is_bound(app, "input_cancel", key) {
+            if let Some(field) = app.tag_editor.selected_field() {
+                if let Some(original) = app.tag_editor.original.get(field) {
+                    app.tag_editor
+                        .values
+                        .insert(field.to_string(), original.clone());
+                }
+            }
+            app.tag_editor.editing = false;
+            app.tag_editor.cursor = 0;
+        } else if is_bound(app, "input_submit", key) {
+            app.tag_editor.editing = false;
+            app.tag_editor.cursor = 0;
+        } else if is_bound(app, "input_backspace", key) {
+            if let Some(field) = app.tag_editor.selected_field() {
+                let cursor = app.tag_editor.cursor;
+                if let Some(value) = app.tag_editor.values.get_mut(field) {
+                    if cursor > 0 {
+                        let start = value.char_indices().nth(cursor - 1).map(|(i, _)| i);
+                        let end = value
+                            .char_indices()
+                            .nth(cursor)
+                            .map(|(i, _)| i)
+                            .unwrap_or(value.len());
+                        if let Some(start) = start {
+                            value.replace_range(start..end, "");
+                            app.tag_editor.cursor = cursor - 1;
+                        }
+                    }
+                }
+            }
+        } else if is_bound(app, "input_cursor_left", key) {
+            app.tag_editor.cursor = app.tag_editor.cursor.saturating_sub(1);
+        } else if is_bound(app, "input_cursor_right", key) {
+            if let Some(field) = app.tag_editor.selected_field() {
+                if let Some(value) = app.tag_editor.values.get(field) {
+                    let len = value.chars().count();
+                    app.tag_editor.cursor = (app.tag_editor.cursor + 1).min(len);
+                }
+            }
+        } else if let KeyCode::Char(c) = key.code {
+            if !key
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+            {
+                if let Some(field) = app.tag_editor.selected_field() {
+                    let cursor = app.tag_editor.cursor;
+                    if let Some(value) = app.tag_editor.values.get_mut(field) {
+                        let byte = value
+                            .char_indices()
+                            .nth(cursor)
+                            .map(|(i, _)| i)
+                            .unwrap_or(value.len());
+                        value.insert(byte, c);
+                        app.tag_editor.cursor = cursor + 1;
+                    }
+                }
+            }
+        }
+        return Ok(());
+    }
+
+    if is_bound(app, "tag_edit", key) {
+        app.tag_editor.editing = true;
+        app.tag_editor.cursor = app
+            .tag_editor
+            .selected_field()
+            .and_then(|f| app.tag_editor.values.get(f))
+            .map(|v| v.chars().count())
+            .unwrap_or(0);
+    } else if is_bound(app, "move_down", key) {
+        app.tag_editor.selected = (app.tag_editor.selected + 1).min(FIELDS.len().saturating_sub(1));
+    } else if is_bound(app, "move_up", key) {
+        app.tag_editor.selected = app.tag_editor.selected.saturating_sub(1);
+    } else if is_bound(app, "tag_save", key) {
+        if let Some(path) = app.tag_editor.path.clone() {
+            match tageditor::write(&path, &app.tag_editor.values) {
+                Ok(()) => {
+                    app.tag_editor.original = app.tag_editor.values.clone();
+                    app.tag_editor.status = "Saved".to_string();
+                }
+                Err(error) => {
+                    app.tag_editor.status = format!("Save failed: {error}");
+                }
+            }
+        }
+    } else if is_bound(app, "tag_reset", key) {
+        app.tag_editor.values = app.tag_editor.original.clone();
+        app.tag_editor.status = "Reset".to_string();
+    } else if is_bound(app, "tag_transform_capitalize", key) {
+        tageditor::transform(&mut app.tag_editor.values, Transform::Capitalize);
+    } else if is_bound(app, "tag_transform_lower", key) {
+        tageditor::transform(&mut app.tag_editor.values, Transform::Lower);
+    } else if is_bound(app, "tag_transform_upper", key) {
+        tageditor::transform(&mut app.tag_editor.values, Transform::Upper);
+    } else if is_bound(app, "tag_transform_trim", key) {
+        tageditor::transform(&mut app.tag_editor.values, Transform::Trim);
     }
     Ok(())
 }
@@ -396,6 +519,7 @@ fn update_search_selection(app: &mut App) {
                 }
             }
         }
+        SelectedTab::Tags => {}
     }
 }
 

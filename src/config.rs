@@ -26,6 +26,7 @@ pub struct MpdConfig {
     pub host: String,
     pub port: u16,
     pub password: String,
+    pub music_directory: String,
 }
 
 impl Default for MpdConfig {
@@ -34,6 +35,7 @@ impl Default for MpdConfig {
             host: "127.0.0.1".to_string(),
             port: 6600,
             password: String::new(),
+            music_directory: String::new(),
         }
     }
 }
@@ -77,6 +79,7 @@ impl Default for Keybindings {
             ("select_queue", &["1"]),
             ("select_browser", &["2"]),
             ("select_playlists", &["3"]),
+            ("select_tags", &["4"]),
             ("next_track", &[">"]),
             ("previous_track", &["<"]),
             ("volume_up", &["=", "+"]),
@@ -111,6 +114,14 @@ impl Default for Keybindings {
             ("input_cursor_left", &["Left"]),
             ("input_cursor_right", &["Right"]),
             ("input_submit", &["Enter"]),
+            ("open_in_tag_editor", &["T"]),
+            ("tag_edit", &["Enter", "l"]),
+            ("tag_save", &["s"]),
+            ("tag_reset", &["r"]),
+            ("tag_transform_capitalize", &["c"]),
+            ("tag_transform_lower", &["L"]),
+            ("tag_transform_upper", &["U"]),
+            ("tag_transform_trim", &["t"]),
         ];
         Self {
             bindings: defaults
@@ -393,6 +404,9 @@ fn option_description(section: &str, key: &str) -> &'static str {
         ("mpd", "password") => {
             "Optional MPD password; leave empty when the server has no password."
         }
+        ("mpd", "music_directory") => {
+            "Absolute path to your MPD music directory (needed for tag editing)."
+        }
         ("playback", "seek_seconds") => "Seconds moved by seek_forward and seek_backward.",
         ("playback", "volume_step") => {
             "Volume percentage changed by volume_up and volume_down (1-100)."
@@ -408,10 +422,11 @@ fn option_description(section: &str, key: &str) -> &'static str {
         }
         ("keybindings", "seek_forward") => "Seek forward by playback.seek_seconds.",
         ("keybindings", "seek_backward") => "Seek backward by playback.seek_seconds.",
-        ("keybindings", "cycle_tabs") => "Cycle through Queue, Browser, and Playlists views.",
+        ("keybindings", "cycle_tabs") => "Cycle through Queue, Browser, Playlists, and Tags views.",
         ("keybindings", "select_queue") => "Open the Queue view.",
         ("keybindings", "select_browser") => "Open the Browser view.",
         ("keybindings", "select_playlists") => "Open the Playlists view.",
+        ("keybindings", "select_tags") => "Open the Tag editor view.",
         ("keybindings", "next_track") => "Start the next track in the queue.",
         ("keybindings", "previous_track") => "Start the previous track in the queue.",
         ("keybindings", "volume_up") => "Increase volume by playback.volume_step.",
@@ -462,6 +477,16 @@ fn option_description(section: &str, key: &str) -> &'static str {
         ("keybindings", "input_cursor_left") => "Move the input cursor left.",
         ("keybindings", "input_cursor_right") => "Move the input cursor right.",
         ("keybindings", "input_submit") => "Submit the active search or playlist-name input.",
+        ("keybindings", "open_in_tag_editor") => {
+            "Open the selected browser song in the Tag editor."
+        }
+        ("keybindings", "tag_edit") => "Enter edit mode on the selected tag field.",
+        ("keybindings", "tag_save") => "Save tag changes to the file.",
+        ("keybindings", "tag_reset") => "Reset tags to last saved values.",
+        ("keybindings", "tag_transform_capitalize") => "Capitalize each word in all tag fields.",
+        ("keybindings", "tag_transform_lower") => "Lowercase all tag fields.",
+        ("keybindings", "tag_transform_upper") => "Uppercase all tag fields.",
+        ("keybindings", "tag_transform_trim") => "Trim whitespace from all tag fields.",
         _ => "Key aliases for this action.",
     }
 }
@@ -516,8 +541,10 @@ mod tests {
         assert_eq!(parsed.mpd.host, "127.0.0.1");
         assert!(contents.starts_with("# rmptui configuration."));
         assert!(contents.contains("password = \"\""));
+        assert!(contents.contains("music_directory = \"\""));
         assert!(contents.contains("[keybindings]"));
         assert!(contents.contains("input_submit = [\"Enter\"]"));
+        assert!(contents.contains("select_tags = [\"4\"]"));
         assert!(contents.contains("MPD_HOST overrides [mpd].host"));
         assert!(contents.contains("MPD_PORT overrides"));
         assert!(contents.contains("# Focus the selected playlist's song contents."));

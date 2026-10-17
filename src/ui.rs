@@ -4,6 +4,7 @@ use crate::{
     app::{App, PlaylistFocus, SelectedTab},
     browser::BrowserEntry,
     connection::{PlaybackState, Song, VolumeStatus},
+    tageditor::FIELDS,
 };
 use ratatui::{prelude::*, widgets::*};
 
@@ -63,9 +64,13 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         SelectedTab::Queue => draw_queue(frame, app, layout[0]),
         SelectedTab::Playlists => draw_playlist_viewer(frame, app, layout[0]),
         SelectedTab::DirectoryBrowser => draw_directory_browser(frame, app, layout[0]),
+        SelectedTab::Tags => draw_tag_editor(frame, app, layout[0]),
     }
 
     match app.inputmode {
+        InputMode::Normal if app.selected_tab == SelectedTab::Tags => {
+            draw_tags_hint(frame, app, layout[1]);
+        }
         InputMode::Normal => {
             draw_progress_bar(frame, app, layout[1]);
         }
@@ -376,6 +381,64 @@ fn draw_playlist_viewer(frame: &mut Frame, app: &mut App, area: Rect) {
     app.playlist_songs_state
         .select(Some(app.playlist_song_index));
     frame.render_stateful_widget(table, layouts[1], &mut app.playlist_songs_state);
+}
+
+fn draw_tag_editor(frame: &mut Frame, app: &mut App, area: Rect) {
+    const LABEL_WIDTH: u16 = 18;
+
+    let state = &app.tag_editor;
+    let title = match &state.path {
+        Some(path) => format!("Tag Editor — {}", path.display()),
+        None => "Tag Editor — select a song in Browser with T".to_string(),
+    };
+
+    let rows: Vec<Row> = FIELDS
+        .iter()
+        .enumerate()
+        .map(|(i, (name, label))| {
+            let value = state.values.get(*name).cloned().unwrap_or_default();
+            let style = if i == state.selected {
+                Style::default().add_modifier(Modifier::REVERSED)
+            } else {
+                Style::default()
+            };
+            Row::new(vec![
+                Cell::from(*label).style(Style::default().fg(Color::Cyan)),
+                Cell::from(value),
+            ])
+            .style(style)
+        })
+        .collect();
+
+    let table = Table::new(rows, [Constraint::Length(LABEL_WIDTH), Constraint::Min(0)])
+        .block(Block::default().title(title).borders(Borders::ALL))
+        .flex(layout::Flex::Legacy);
+
+    frame.render_widget(table, area);
+
+    if state.editing {
+        let cursor_x = area.x + LABEL_WIDTH + state.cursor as u16;
+        let cursor_y = area.y + 1 + state.selected as u16;
+        frame.set_cursor_position((cursor_x, cursor_y));
+    }
+}
+
+fn draw_tags_hint(frame: &mut Frame, app: &mut App, area: Rect) {
+    let state = &app.tag_editor;
+    let text = if state.editing {
+        "Editing — [Enter] Done  [Esc] Cancel field"
+    } else if state.is_dirty() {
+        "Modified — [s] Save  [r] Reset  [c] Capitalize  [L] lower  [U] UPPER  [t] trim"
+    } else {
+        "[j/k] field  [Enter] edit  [c] Capitalize  [L] lower  [U] UPPER  [t] trim  [s] Save"
+    };
+    let title = if state.status.is_empty() {
+        "Keys".to_string()
+    } else {
+        state.status.clone()
+    };
+    let paragraph = Paragraph::new(text).block(Block::default().borders(Borders::ALL).title(title));
+    frame.render_widget(paragraph, area);
 }
 
 fn draw_add_to_playlist(frame: &mut Frame, app: &mut App, area: Rect) {

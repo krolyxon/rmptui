@@ -5,6 +5,7 @@ use crate::{
     config::Config,
     connection::{Connection, MpdSnapshot, Song},
     list::ContentList,
+    tageditor::{self, TagMap, FIELDS},
     ui::InputMode,
     utils::is_audio_file,
     AppResult,
@@ -40,6 +41,7 @@ pub struct App {
     pub playlists_state: ListState,
     pub playlist_songs_state: TableState,
     pub playlist_contents: Vec<Song>,
+    pub tag_editor: TagEditorState,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -47,6 +49,7 @@ pub enum SelectedTab {
     DirectoryBrowser,
     Queue,
     Playlists,
+    Tags,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
@@ -54,6 +57,39 @@ pub enum PlaylistFocus {
     #[default]
     List,
     Songs,
+}
+
+#[derive(Debug, Default)]
+pub struct TagEditorState {
+    pub path: Option<std::path::PathBuf>,
+    pub values: TagMap,
+    pub original: TagMap,
+    pub selected: usize,
+    pub editing: bool,
+    pub cursor: usize,
+    pub status: String,
+}
+
+impl TagEditorState {
+    pub fn is_dirty(&self) -> bool {
+        self.values != self.original
+    }
+
+    pub fn selected_field(&self) -> Option<&'static str> {
+        FIELDS.get(self.selected).map(|(name, _)| *name)
+    }
+
+    pub fn load(&mut self, path: std::path::PathBuf) -> AppResult<()> {
+        let values = tageditor::read(&path)?;
+        self.original = values.clone();
+        self.values = values;
+        self.path = Some(path);
+        self.selected = 0;
+        self.editing = false;
+        self.cursor = 0;
+        self.status.clear();
+        Ok(())
+    }
 }
 
 impl App {
@@ -100,6 +136,7 @@ impl App {
             playlists_state: ListState::default(),
             playlist_songs_state: TableState::default(),
             playlist_contents: Vec::new(),
+            tag_editor: TagEditorState::default(),
         };
         app.refresh_playlist_view().await?;
         Ok(app)
@@ -268,6 +305,7 @@ impl App {
                 }
             }
             SelectedTab::Playlists => {}
+            SelectedTab::Tags => {}
         }
         self.update_queue().await?;
         self.conn.update_status().await?;
@@ -278,7 +316,8 @@ impl App {
         self.selected_tab = match self.selected_tab {
             SelectedTab::Queue => SelectedTab::DirectoryBrowser,
             SelectedTab::DirectoryBrowser => SelectedTab::Playlists,
-            SelectedTab::Playlists => SelectedTab::Queue,
+            SelectedTab::Playlists => SelectedTab::Tags,
+            SelectedTab::Tags => SelectedTab::Queue,
         };
     }
 
@@ -347,6 +386,7 @@ impl App {
                 };
                 self.conn.playlist(name).await?
             }
+            SelectedTab::Tags => Vec::new(),
         };
 
         if playlist == "Current Playlist" {
@@ -488,6 +528,9 @@ impl App {
             SelectedTab::Queue => self.queue_list.prev(),
             SelectedTab::DirectoryBrowser => self.browser.prev(),
             SelectedTab::Playlists => self.pl_list.prev(),
+            SelectedTab::Tags => {
+                self.tag_editor.selected = self.tag_editor.selected.saturating_sub(1);
+            }
         }
     }
 
@@ -496,6 +539,10 @@ impl App {
             SelectedTab::Queue => self.queue_list.next(),
             SelectedTab::DirectoryBrowser => self.browser.next(),
             SelectedTab::Playlists => self.pl_list.next(),
+            SelectedTab::Tags => {
+                self.tag_editor.selected =
+                    (self.tag_editor.selected + 1).min(FIELDS.len().saturating_sub(1));
+            }
         }
     }
 }

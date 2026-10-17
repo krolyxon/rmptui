@@ -7,6 +7,7 @@ pub mod connection;
 pub mod event_handler;
 pub mod list;
 pub mod logging;
+pub mod tageditor;
 pub mod tui;
 pub mod ui;
 pub mod utils;
