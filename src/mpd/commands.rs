@@ -94,13 +94,19 @@ pub fn add_id(uri: &str) -> Command {
     Command::new("addid").arg(uri)
 }
 
+pub fn delete_pos(pos: u32) -> Command {
+    Command::new("delete").arg(pos.to_string())
+}
+
 pub fn delete_id(id: u32) -> Command {
     Command::new("deleteid").arg(id.to_string())
 }
 
-pub fn move_id(id: u32, to: u32) -> Command {
-    Command::new("moveid")
-        .arg(id.to_string())
+/// Moves the song at queue position `from` to `to`. Positions (unlike ids)
+/// stay correct when several moves are sent before the queue is refreshed.
+pub fn move_pos(from: u32, to: u32) -> Command {
+    Command::new("move")
+        .arg(from.to_string())
         .arg(to.to_string())
 }
 

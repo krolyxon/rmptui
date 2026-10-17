@@ -35,7 +35,10 @@ macro_rules! named_enum {
                     .iter()
                     .copied()
                     .find(|v| v.name() == s)
-                    .ok_or_else(|| format!("unknown {} `{s}`", stringify!($name).to_lowercase()))
+                    .ok_or_else(|| {
+                        let names: Vec<_> = Self::ALL.iter().map(|v| v.name()).collect();
+                        format!("unknown value `{s}`, expected one of: {}", names.join(", "))
+                    })
             }
         }
 
