@@ -1,32 +1,68 @@
-# Copilot instructions for rmptui
+# Contributor and agent instructions for rmptui
 
 ## Build, test, and lint
 
 - `cargo build` — compile the application.
-- `cargo run` — run against MPD at `127.0.0.1:6600` by default.
-- `cargo fmt --check` — check Rust formatting; use `cargo fmt` to format.
-- `cargo test` — run all unit tests.
-- `cargo test connection::tests::parses_quoted_mpd_values_and_escapes` — run one named test. Replace the filter with a test name or module path to target another test.
-- `cargo clippy --all-targets -- -D warnings` — lint all targets and treat warnings as errors.
+- `cargo run -- --config FILE` — run with a specific config (MPD at
+  `127.0.0.1:6600` by default; `MPD_HOST`/`MPD_PORT` override it).
+- `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+- `cargo test mpd::protocol` — run the tests of one module; `tests/mpd_client.rs`
+  exercises the client against a scripted fake MPD server.
 
 ## Architecture
 
-- `src/main.rs` owns the Tokio runtime, reads `MPD_HOST`/`MPD_PORT`, initializes the terminal, and selects between terminal input, redraw ticks, and MPD change notifications. A separate `MpdClient` connection blocks on MPD `idle`, then sends a fresh `MpdSnapshot` to the UI; the app's command connection stays available for user actions.
-- `src/config.rs` loads or creates the TOML configuration at `$CONFIG_HOME/rmptui/config.toml`, falling back to `$XDG_CONFIG_HOME` and then `~/.config`. Its generated TOML documents every option and keybinding. MPD host/port settings can be overridden with `MPD_HOST` and `MPD_PORT`.
-- `src/connection.rs` implements MPD's line-oriented text protocol over Tokio TCP, including command quoting, response/error parsing, and conversion of MPD responses into app models. Keep protocol I/O asynchronous. The client processes a command's complete response before issuing another command on that connection.
-- `src/app.rs` owns UI/application state and coordinates queue, browser, and playlist operations. `src/browser.rs` represents rows as `BrowserEntry::Directory` or `BrowserEntry::Song`, keeping song metadata with its row. Browser paths are MPD library-relative paths, not local filesystem paths. The Playlists view has separate list/song focus and supports stored-playlist track deletion and reordering through MPD's `playlistdelete` and `playlistmove` commands.
-- `src/event_handler/handler.rs` maps Crossterm events to application operations. `src/ui.rs` renders the current app state with Ratatui; it should not perform MPD I/O. `src/tui.rs` owns terminal mode setup, drawing, and restoration.
-- `src/list.rs` contains shared list cursor behavior. `src/utils.rs` provides the built-in audio-extension check used by the browser and directory operations.
+- `mpd/` is a self-contained MPD client.
+  - `protocol.rs`: pure command encoding (every argument quoted and escaped)
+    and response parsing.
+  - `connection.rs`: async TCP and Unix-socket connections.
+  - `types.rs`: typed models.
+  - `commands.rs`: command constructors.
+  - `worker.rs`: two background tasks. The *idle* connection reports changed
+    subsystems. The *command* connection runs `Request`s from an `MpdHandle`
+    and answers `Query`s with `Reply`s. Both reconnect on their own.
+- `app.rs` owns the state and runs one `tokio::select!` loop over terminal
+  input, `AppEvent`s (MPD, lyrics, tag writes) and visualizer frames. UI code
+  never awaits MPD: it sends requests and reacts to the resulting events.
+- `state.rs` (`MpdState`) mirrors the server: status, current song, the queue
+  (updated incrementally via `plchanges`), stored playlists, and a database
+  version used to invalidate caches.
+- `screens/` holds one component per screen behind the `Screen` trait (`draw`,
+  `handle_action`, `on_mpd`, `on_enter`, `on_mouse`, `search`).
+  - Screens receive a `Ctx` with read access to config and state, the
+    `MpdHandle`, and an effect queue (`Effect`) for things only the app can do:
+    notifications, popups, tag writes, lyric reloads.
+  - Every screen sees every `MpdEvent`, so caches stay valid while hidden.
+- `popups/` holds modal components (`Popup` trait); the topmost popup gets all
+  keys. Destructive actions go through `ConfirmPopup`.
+- `ui/` holds the frame chrome (header, tabs, progress, status line), the
+  virtualized searchable `ListView`, and the `LineInput` editor.
+- `config/`:
+  - `default.toml` is embedded and is the single source of truth for
+    defaults; user files are merged over it table by table.
+  - `keys.rs` parses key specs and builds the per-context `Keymap`.
+- `action.rs` defines the `Action`, `Context` and `ScreenId` enums. Each action
+  declares the contexts it may be bound in. Lookup order is: popup or screen
+  context → `navigation` → `global`.
+- `lyrics/`: LRC parser and the async lookup service (local `.lrc` → cache →
+  LRCLIB). `visualizer/`: fifo reader thread with FFT, plus bar smoothing.
+  `tags.rs`: lofty-based tag writing.
 
-## Repository conventions
+## Conventions
 
-- Keep the MPD protocol models and wire-format parsing in `connection.rs`; UI and application code should use those models rather than parse raw MPD responses.
-- Use the crate-level `AppResult<T>` for errors crossing module boundaries. Avoid duplicating state that can be derived from the MPD status or other canonical model data.
-- Keep configuration defaults and validation in `config.rs`, and read tunable behavior from `App.config` rather than adding new hard-coded runtime values. Route keyboard actions through `App.config.keybindings`; keep README controls and the generated defaults in sync. Text typed into search/name fields is content, not a keybinding, except for configured input-editing actions.
-- When adding or changing config options, update all three: the runtime default/config validation, descriptive comments in the generated first-run TOML, and the README example/explanation. Existing partial configs should continue receiving defaults for newly added keybindings.
-- Pass MPD library paths as protocol arguments. The MPD command writer quotes and escapes each argument, so do not construct raw command strings from user-provided names or paths.
-- Preserve async boundaries through event handling and app operations; do not introduce blocking socket reads, polling threads, or synchronous terminal polling.
-- Browser `/` search retains all positive-scoring fuzzy matches in result order. `Enter` returns to normal navigation while retaining browser results; `n` and `N` cycle them. Starting a new search or changing directories resets those results.
-- In the Playlists view, `Left`/`h` and `Right`/`l` switch focus between playlist names and song contents. `Space`/`Enter` load a selected playlist from the playlist list; when song contents are focused, `Enter` plays that song, `d` deletes it from the stored playlist, and `J`/`K` reorder it. `D` deletes the selected stored playlist and `R` renames it. Keep these actions context-aware and all defaults documented in the README/config.
-- When changing key behavior or features, keep the controls documented in `README.md` consistent with `event_handler/handler.rs`.
-- `AppResult<T>` is `Send + Sync` because application errors cross Tokio task boundaries.
+- Build MPD commands only through `mpd::commands` or `Command::arg`; never
+  format raw command strings from user data. Filter expressions go through
+  `protocol::filter_eq`/`filter_and`.
+- Prefer position-based commands (`move`, `delete`) for actions users repeat
+  quickly. They stay correct even when sent before the local queue refreshes.
+- Every new action needs:
+  - an `Action` variant with its contexts and description;
+  - a default binding in `config/default.toml` (a test enforces this);
+  - a README entry.
+- Every new option needs:
+  - a documented entry in `default.toml`;
+  - a field in the matching config struct (`deny_unknown_fields` catches
+    typos);
+  - validation in `Config::validate` if it has limits;
+  - README documentation.
+- Screens must not block: do file and network I/O in tasks (see lyrics) or
+  `spawn_blocking` (see tag writes) and report back through `AppEvent`.

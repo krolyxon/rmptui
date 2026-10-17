@@ -1,3 +1,24 @@
+## rmptui-v0.2.0
+
+A rewrite from scratch with a new architecture modelled on ncmpcpp and rmpc.
+
+- New screens: Media Library (artists → albums → songs), Tag Editor,
+  spectrum Visualizer (MPD fifo output) and synced Lyrics (local `.lrc`
+  files, cache and LRCLIB), plus a lyrics pane on the queue.
+- Browser shows stored playlists at the bottom of the root folder;
+  playlist editor, queue and browser keep every 0.1 feature.
+- MPD I/O runs in background tasks; key presses never wait for the server,
+  and the client reconnects automatically. Unix sockets are supported.
+- Marks (`v`) for acting on several items, fuzzy search on every list,
+  confirmation before clearing the queue or deleting playlists, a key help
+  popup (`?`) and mouse support (select, double-click, wheel, tabs, seek).
+- New configuration format with per-context key bindings, a theme, queue
+  columns and lyrics/visualizer settings. The documented default file is the
+  single source of truth; partial files keep all other defaults. 0.1 config
+  files are detected and rejected with instructions.
+- New `--config` and `--print-default-config` options; `RMPTUI_LOG` sets
+  the log level.
+
 ## rmptui-v0.1.7
 
 - Replace the outdated MPD crate with an asynchronous native MPD TCP protocol
