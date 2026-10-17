@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use super::Spectrum;
+use super::AudioFrame;
 
 /// Bar heights (0.0–1.0) with gravity falloff between frames.
 #[derive(Debug)]
@@ -29,7 +29,7 @@ impl Bars {
     /// logarithmic scale. `falloff` is in heights per second.
     pub fn update(
         &mut self,
-        spectrum: &Spectrum,
+        spectrum: &AudioFrame,
         count: usize,
         min_hz: f32,
         max_hz: f32,
@@ -53,7 +53,7 @@ impl Bars {
 }
 
 /// Levels (0.0–1.0) of `count` log-spaced bands.
-pub fn band_levels(spectrum: &Spectrum, count: usize, min_hz: f32, max_hz: f32) -> Vec<f32> {
+pub fn band_levels(spectrum: &AudioFrame, count: usize, min_hz: f32, max_hz: f32) -> Vec<f32> {
     let bins = &spectrum.magnitudes;
     if count == 0 || bins.is_empty() || spectrum.bin_hz <= 0.0 {
         return vec![0.0; count];
@@ -85,14 +85,14 @@ pub fn band_levels(spectrum: &Spectrum, count: usize, min_hz: f32, max_hz: f32) 
 mod tests {
     use super::*;
 
-    fn spectrum_with_peak(hz: f32) -> Spectrum {
+    fn spectrum_with_peak(hz: f32) -> AudioFrame {
         let bin_hz = 44_100.0 / 2048.0;
         let mut magnitudes = vec![0.0; 1025];
         magnitudes[(hz / bin_hz).round() as usize] = 1.0;
-        Spectrum {
+        AudioFrame {
             magnitudes,
             bin_hz,
-            error: None,
+            ..AudioFrame::default()
         }
     }
 
@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn silence_and_empty_input_give_zero() {
         assert_eq!(
-            band_levels(&Spectrum::default(), 4, 40.0, 16_000.0),
+            band_levels(&AudioFrame::default(), 4, 40.0, 16_000.0),
             [0.0; 4]
         );
     }
@@ -123,7 +123,7 @@ mod tests {
         let mut bars = Bars::default();
         let loud = spectrum_with_peak(1000.0);
         let peak = bars.update(&loud, 20, 40.0, 16_000.0, 1.0).to_vec();
-        let after = bars.update(&Spectrum::default(), 20, 40.0, 16_000.0, 1.0);
+        let after = bars.update(&AudioFrame::default(), 20, 40.0, 16_000.0, 1.0);
         let i = peak.iter().position(|&h| h > 0.0).unwrap();
         assert!(after[i] > 0.0 && after[i] <= peak[i]);
     }

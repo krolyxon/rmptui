@@ -31,7 +31,7 @@ use crate::{
     popups::Popup,
     state::MpdState,
     tags::{TagField, TagWrite},
-    visualizer::Spectrum,
+    visualizer::AudioFrame,
 };
 
 /// What a screen or popup may read, plus a queue of effects for the app.
@@ -136,14 +136,14 @@ pub struct Screens {
 }
 
 impl Screens {
-    pub fn new(config: &Config, spectrum: watch::Receiver<Arc<Spectrum>>) -> Self {
+    pub fn new(config: &Config, spectrum: watch::Receiver<Arc<AudioFrame>>) -> Self {
         Self {
             queue: QueueScreen::new(config),
             browser: BrowserScreen::default(),
             playlists: PlaylistsScreen::default(),
             library: LibraryScreen::default(),
             tag_editor: TagEditorScreen::default(),
-            visualizer: VisualizerScreen::new(spectrum),
+            visualizer: VisualizerScreen::new(config, spectrum),
             lyrics: LyricsScreen::default(),
         }
     }

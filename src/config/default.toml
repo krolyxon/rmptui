@@ -95,6 +95,14 @@ lrclib_url = "https://lrclib.net"
 #       format "44100:16:2"
 #   }
 fifo = "/tmp/mpd.fifo"
+# Startup style: wave, wave_filled, spectrum or ellipse. Press
+# `cycle_visualizer` (Space) on the visualizer screen to switch.
+style = "wave"
+# Draw the left channel in the top half and the right one in the bottom half
+# (wave styles only).
+stereo = true
+# Character used to draw the wave and ellipse styles.
+wave_symbol = "●"
 # Must match the `format` of the fifo output.
 sample_rate = 44100
 channels = 2
@@ -193,6 +201,7 @@ save_tags = ["w"]
 revert_tags = ["u"]
 
 [keys.visualizer]
+cycle_visualizer = ["Space"]
 
 [keys.lyrics]
 reload_lyrics = ["F5"]

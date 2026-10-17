@@ -133,6 +133,7 @@ named_enum! {
         ToggleArtistTag = "toggle_artist_tag",
         SaveTags = "save_tags",
         RevertTags = "revert_tags",
+        CycleVisualizer = "cycle_visualizer",
         ReloadLyrics = "reload_lyrics",
         // Popups and text input
         Close = "close",
@@ -219,6 +220,7 @@ impl Action {
             DeletePlaylist | RenamePlaylist => &[C::Playlists],
             ToggleArtistTag => &[C::Library],
             SaveTags | RevertTags => &[C::TagEditor],
+            CycleVisualizer => &[C::Visualizer],
             ReloadLyrics => &[C::Lyrics],
             Close => &[C::Popup],
             Submit | Cancel | Backspace | DeleteChar | DeleteWord | CursorLeft | CursorRight
@@ -287,6 +289,7 @@ impl Action {
             ToggleArtistTag => "Switch between AlbumArtist and Artist",
             SaveTags => "Write pending tag changes",
             RevertTags => "Discard pending tag changes",
+            CycleVisualizer => "Switch to the next visualizer style",
             ReloadLyrics => "Fetch lyrics again",
             Close => "Close the popup",
             Submit => "Submit",

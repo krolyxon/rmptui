@@ -296,7 +296,9 @@ async fn execute(conn: &mut Connection, request: &Request) -> MpdResult<Option<R
         }
         Request::LoadAndPlay { name, offset } => {
             let start = queue_length(conn).await?;
-            let entries = conn.execute(&Command::new("listplaylist").arg(name)).await?;
+            let entries = conn
+                .execute(&Command::new("listplaylist").arg(name))
+                .await?;
             conn.execute(&commands::load(name)).await?;
             // `load` silently skips entries the server cannot resolve, so the
             // playlist index is not necessarily the queue offset.
