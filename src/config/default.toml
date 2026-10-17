@@ -1,0 +1,221 @@
+# rmptui configuration
+#
+# Every option is shown with its default value. Settings you leave out keep
+# their defaults, so you can trim this file down to the parts you change.
+# Restart rmptui to apply changes.
+
+[mpd]
+# Hostname, IP address, or the path of MPD's Unix socket (starting with `/`
+# or `~`). Overridden by the MPD_HOST environment variable, which also accepts
+# `password@host`.
+host = "127.0.0.1"
+# Overridden by MPD_PORT. Ignored for Unix sockets.
+port = 6600
+# Set this only if your MPD server requires a password. It is stored in plain
+# text; rmptui creates this file readable only by you.
+password = ""
+# The music directory on this machine, required by the tag editor and for
+# `.lrc` files stored next to songs. Leave empty to ask MPD, which only answers
+# over a Unix socket.
+music_directory = ""
+
+[playback]
+# Seconds moved by seek_forward / seek_backward.
+seek_seconds = 5
+# Percent changed by volume_up / volume_down.
+volume_step = 5
+
+[ui]
+# Screen shown on startup: queue, browser, playlists, library, tag_editor,
+# visualizer or lyrics.
+startup_screen = "queue"
+# Enable mouse support (click to select, double-click to play/open, wheel to
+# scroll, click the progress bar to seek).
+mouse = true
+# Ask before clearing the queue.
+confirm_clear_queue = false
+# Show the lyrics pane next to the queue on startup (toggle with `L`).
+lyrics_pane = false
+# Width of the lyrics pane in percent of the screen.
+lyrics_pane_width = 40
+# Seconds a status message stays visible.
+message_timeout = 4
+# Columns of the song tables (queue, browser, playlist contents). `field` is
+# one of artist, album_artist, title, album, track, disc, date, genre,
+# duration or file. `width` is a relative weight, except for track, disc and
+# duration, where it is a fixed number of characters.
+song_columns = [
+    { field = "artist", width = 34 },
+    { field = "track", width = 5 },
+    { field = "title", width = 33 },
+    { field = "album", width = 30 },
+    { field = "duration", width = 5 },
+]
+
+[theme]
+# Colors are names (black, red, green, yellow, blue, magenta, cyan, gray,
+# darkgray, lightred, …, white, reset), 256-color indices ("208") or hex
+# values ("#c694ff"). "reset" is your terminal's default color.
+text = "reset"
+dim = "darkgray"
+# Horizontal and vertical separator lines.
+border = "gray"
+# The selected row. With both set to "reset", the row is shown in reverse
+# video like ncmpcpp.
+selection_fg = "reset"
+selection_bg = "reset"
+playing = "reset"
+marked = "yellow"
+directory = "reset"
+error = "red"
+# Song table columns.
+artist = "reset"
+track = "darkgray"
+album = "reset"
+duration = "reset"
+# The filled part of the progress bar.
+progress = "gray"
+# Visualizer bar gradient, from the bottom of the screen to the top.
+visualizer = ["blue", "cyan", "green", "yellow", "red"]
+
+[lyrics]
+# Look up lyrics on https://lrclib.net when no local `.lrc` file exists.
+online = true
+# Keep fetched lyrics in $XDG_CACHE_HOME/rmptui/lyrics (~/.cache by default).
+cache = true
+lrclib_url = "https://lrclib.net"
+
+[visualizer]
+# Path of an MPD fifo output. Add this to mpd.conf:
+#
+#   audio_output {
+#       type   "fifo"
+#       name   "Visualizer feed"
+#       path   "/tmp/mpd.fifo"
+#       format "44100:16:2"
+#   }
+fifo = "/tmp/mpd.fifo"
+# Startup style: wave, wave_filled, spectrum or ellipse. Press
+# `cycle_visualizer` (Space) on the visualizer screen to switch.
+style = "wave"
+# Draw the left channel in the top half and the right one in the bottom half
+# (wave styles only).
+stereo = true
+# Character used to draw the wave and ellipse styles.
+wave_symbol = "●"
+# Must match the `format` of the fifo output.
+sample_rate = 44100
+channels = 2
+framerate = 60
+bar_width = 2
+bar_gap = 1
+min_frequency = 40
+max_frequency = 16000
+# How fast bars fall, in screen heights per second.
+falloff = 1.5
+
+# Key bindings
+#
+# Each table is a context. Lookups start with the context of the focused
+# popup or screen, then `navigation`, then `global`, so a key bound in a
+# screen context shadows the same key in `global` on that screen.
+#
+# Each action takes a list of keys. A key is a character or one of Enter,
+# Esc, Tab, Backspace, Delete, Insert, Space, Up, Down, Left, Right, Home,
+# End, PageUp, PageDown and F1–F24, optionally prefixed by Ctrl+, Alt+ or
+# Shift+ (e.g. "Ctrl+x", "Alt+Enter", "Shift+Tab"). Set an action to [] to
+# unbind it; a key may only be used once per context.
+
+[keys.global]
+quit = ["q", "Ctrl+c"]
+help = ["?", "F1"]
+toggle_pause = ["p"]
+pause = ["s"]
+stop = ["x"]
+next_track = [">"]
+previous_track = ["<"]
+seek_forward = ["f"]
+seek_backward = ["b"]
+volume_up = ["+", "="]
+volume_down = ["-"]
+toggle_mute = ["m"]
+toggle_repeat = ["r"]
+toggle_random = ["z"]
+toggle_single = ["y"]
+toggle_consume = ["R"]
+update_database = ["U"]
+clear_queue = ["c"]
+next_screen = ["Tab"]
+previous_screen = ["Shift+Tab"]
+screen_queue = ["1"]
+screen_browser = ["2"]
+screen_playlists = ["3"]
+screen_library = ["4"]
+screen_tag_editor = ["5"]
+screen_visualizer = ["6"]
+screen_lyrics = ["7"]
+
+[keys.navigation]
+up = ["k", "Up"]
+down = ["j", "Down"]
+top = ["g", "Home"]
+bottom = ["G", "End"]
+page_up = ["PageUp"]
+page_down = ["PageDown"]
+half_page_up = ["Ctrl+u"]
+half_page_down = ["Ctrl+d"]
+left = ["h", "Left", "Backspace"]
+right = ["l", "Right"]
+activate = ["Enter"]
+toggle_mark = ["v", "Insert"]
+clear_marks = ["V"]
+search = ["/"]
+search_next = ["n"]
+search_previous = ["N"]
+add_to_queue = ["Space"]
+add_to_playlist = ["a"]
+
+[keys.queue]
+delete = ["d", "Delete"]
+move_item_up = ["K"]
+move_item_down = ["J"]
+shuffle_queue = ["Z"]
+save_queue = ["S"]
+jump_to_current = ["o"]
+toggle_lyrics_pane = ["L"]
+
+[keys.browser]
+
+[keys.playlists]
+delete = ["d", "Delete"]
+move_item_up = ["K"]
+move_item_down = ["J"]
+delete_playlist = ["D"]
+rename_playlist = ["R"]
+
+[keys.library]
+toggle_artist_tag = ["t"]
+
+[keys.tag_editor]
+save_tags = ["w"]
+revert_tags = ["u"]
+
+[keys.visualizer]
+cycle_visualizer = ["Space"]
+
+[keys.lyrics]
+reload_lyrics = ["F5"]
+
+[keys.popup]
+close = ["q", "Esc"]
+
+[keys.input]
+submit = ["Enter"]
+cancel = ["Esc"]
+backspace = ["Backspace"]
+delete_char = ["Delete"]
+delete_word = ["Ctrl+w"]
+cursor_left = ["Left"]
+cursor_right = ["Right"]
+cursor_home = ["Home", "Ctrl+a"]
+cursor_end = ["End", "Ctrl+e"]
