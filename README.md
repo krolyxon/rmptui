@@ -8,7 +8,7 @@
 rmptui is a terminal interface for [Music Player Daemon
 (MPD)](https://www.musicpd.org/) that looks and feels like ncmpcpp. Browse your
 library, manage the queue and playlists, edit tags, read synced lyrics and
-watch a spectrum visualizer without leaving the terminal.
+watch a music visualizer without leaving the terminal.
 
 ![rmptui screenshot](https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/ss.png)
 
@@ -21,7 +21,7 @@ watch a spectrum visualizer without leaving the terminal.
 | `3` | **Playlist editor** | Stored playlists and their songs: load, play from a song, remove or reorder songs, rename or delete playlists. |
 | `4` | **Media library** | Album artists → albums (with year) → songs. `t` switches between AlbumArtist and Artist. |
 | `5` | **Tag editor** | Directories, tag types and tags, like ncmpcpp: edit Title, Artist, Album Artist, Album, Date, Track, Genre, Composer, Performer, Disc and Comment of one or many songs, rename files, fix letter case, then save. |
-| `6` | **Music visualizer** | A spectrum analyzer fed by an MPD fifo output. |
+| `6` | **Music visualizer** | ncmpcpp-style wave, filled wave, spectrum and ellipse visualizers fed by an MPD fifo output; `Space` cycles them. |
 | `7` | **Lyrics** | Synced lyrics that follow playback, or plain lyrics you can scroll. |
 
 Every screen shares ncmpcpp's frame: the screen title and volume on top
@@ -167,6 +167,11 @@ audio_output {
 
 `[visualizer]` must match the `path` and `format`. The fifo is only read while
 the Visualizer screen is visible.
+
+Like ncmpcpp, there are four styles: `wave` (the default), `wave_filled`,
+`spectrum` and `ellipse`. Set the startup one with `style` and press `Space` on
+the screen to cycle through them. With `stereo = true` the wave styles draw the
+left channel in the top half and the right channel in the bottom half.
 
 ### Lyrics
 

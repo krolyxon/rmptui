@@ -3,7 +3,8 @@
 A rewrite from scratch with a new architecture modelled on ncmpcpp and rmpc.
 
 - New screens: Media Library (artists → albums → songs), Tag Editor,
-  spectrum Visualizer (MPD fifo output) and synced Lyrics (local `.lrc`
+  ncmpcpp-style Visualizer (wave, filled wave, spectrum and ellipse, in
+  stereo, from an MPD fifo output) and synced Lyrics (local `.lrc`
   files, cache and LRCLIB), plus a lyrics pane on the queue.
 - Browser shows stored playlists at the bottom of the root folder;
   playlist editor, queue and browser keep every 0.1 feature.

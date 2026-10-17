@@ -123,6 +123,9 @@ pub struct LyricsConfig {
 #[serde(deny_unknown_fields)]
 pub struct VisualizerConfig {
     pub fifo: PathBuf,
+    pub style: VisualizerStyle,
+    pub stereo: bool,
+    pub wave_symbol: String,
     pub sample_rate: u32,
     pub channels: u16,
     pub framerate: u32,
@@ -131,6 +134,35 @@ pub struct VisualizerConfig {
     pub min_frequency: f32,
     pub max_frequency: f32,
     pub falloff: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VisualizerStyle {
+    Wave,
+    WaveFilled,
+    Spectrum,
+    Ellipse,
+}
+
+impl VisualizerStyle {
+    pub fn next(self) -> Self {
+        match self {
+            Self::Wave => Self::WaveFilled,
+            Self::WaveFilled => Self::Spectrum,
+            Self::Spectrum => Self::Ellipse,
+            Self::Ellipse => Self::Wave,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Wave => "wave",
+            Self::WaveFilled => "wave filled",
+            Self::Spectrum => "spectrum",
+            Self::Ellipse => "ellipse",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -272,6 +304,10 @@ impl Config {
         check(
             vis.min_frequency > 0.0 && vis.min_frequency < vis.max_frequency,
             "visualizer.min_frequency must be positive and below max_frequency",
+        )?;
+        check(
+            vis.wave_symbol.chars().count() == 1,
+            "visualizer.wave_symbol must be a single character",
         )?;
         check(
             vis.falloff > 0.0,

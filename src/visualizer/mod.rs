@@ -1,8 +1,9 @@
 //! Reads PCM data from MPD's fifo output and computes spectra.
 //!
 //! A dedicated thread does the I/O and FFT while the visualizer is visible
-//! and publishes each spectrum on a `watch` channel; the UI turns spectra into
-//! bars (see [`bars`]).
+//! and publishes each frame (recent samples plus their spectrum) on a `watch`
+//! channel; the UI draws waves from the samples and bars from the spectrum
+//! (see [`bars`]).
 
 mod bars;
 
@@ -25,27 +26,33 @@ use tracing::warn;
 use crate::config::VisualizerConfig;
 
 const FFT_SIZE: usize = 2048;
+/// Samples per channel kept for the wave styles.
+const WAVE_SAMPLES: usize = 1024;
 
 /// One analysis frame.
 #[derive(Clone, Debug, Default)]
-pub struct Spectrum {
+pub struct AudioFrame {
     /// Normalized magnitude per FFT bin (0 Hz up to Nyquist).
     pub magnitudes: Vec<f32>,
     /// Width of one bin in Hz.
     pub bin_hz: f32,
+    /// The most recent samples of each channel in `-1.0..=1.0`, oldest
+    /// first. Both hold the same data for mono input.
+    pub left: Vec<f32>,
+    pub right: Vec<f32>,
     /// Why there is no audio, if the fifo cannot be read.
     pub error: Option<String>,
 }
 
 pub struct Visualizer {
     active: Arc<AtomicBool>,
-    spectrum: watch::Receiver<Arc<Spectrum>>,
+    spectrum: watch::Receiver<Arc<AudioFrame>>,
 }
 
 impl Visualizer {
     pub fn spawn(config: VisualizerConfig) -> Self {
         let active = Arc::new(AtomicBool::new(false));
-        let (tx, spectrum) = watch::channel(Arc::new(Spectrum::default()));
+        let (tx, spectrum) = watch::channel(Arc::new(AudioFrame::default()));
         let flag = Arc::clone(&active);
         let spawned = thread::Builder::new()
             .name("visualizer".into())
@@ -65,12 +72,12 @@ impl Visualizer {
         self.active.load(Ordering::Relaxed)
     }
 
-    pub fn latest(&self) -> Arc<Spectrum> {
+    pub fn latest(&self) -> Arc<AudioFrame> {
         Arc::clone(&self.spectrum.borrow())
     }
 
     /// A receiver to await new spectra on.
-    pub fn subscribe(&self) -> watch::Receiver<Arc<Spectrum>> {
+    pub fn subscribe(&self) -> watch::Receiver<Arc<AudioFrame>> {
         self.spectrum.clone()
     }
 }
@@ -78,18 +85,20 @@ impl Visualizer {
 struct Reader {
     config: VisualizerConfig,
     active: Arc<AtomicBool>,
-    tx: watch::Sender<Arc<Spectrum>>,
+    tx: watch::Sender<Arc<AudioFrame>>,
     fft: Arc<dyn RealToComplex<f32>>,
     window: Vec<f32>,
     /// The most recent mono samples, oldest first.
     samples: Vec<f32>,
+    left: Vec<f32>,
+    right: Vec<f32>,
 }
 
 impl Reader {
     fn new(
         config: VisualizerConfig,
         active: Arc<AtomicBool>,
-        tx: watch::Sender<Arc<Spectrum>>,
+        tx: watch::Sender<Arc<AudioFrame>>,
     ) -> Self {
         let window = (0..FFT_SIZE)
             .map(|i| {
@@ -104,6 +113,8 @@ impl Reader {
             tx,
             window,
             samples: vec![0.0; FFT_SIZE],
+            left: vec![0.0; WAVE_SAMPLES],
+            right: vec![0.0; WAVE_SAMPLES],
         }
     }
 
@@ -118,12 +129,12 @@ impl Reader {
             match open_fifo(&self.config) {
                 Ok(file) => self.read_while_active(file),
                 Err(error) => {
-                    self.publish(Spectrum {
+                    self.publish(AudioFrame {
                         error: Some(format!(
                             "cannot open {}: {error}",
                             self.config.fifo.display()
                         )),
-                        ..Spectrum::default()
+                        ..AudioFrame::default()
                     });
                     thread::sleep(Duration::from_secs(1));
                 }
@@ -151,16 +162,19 @@ impl Reader {
                     pending.extend_from_slice(&buf[..n]);
                     let usable = pending.len() - pending.len() % frame_bytes;
                     for frame in pending[..usable].chunks_exact(frame_bytes) {
-                        let sum: f32 = frame
-                            .chunks_exact(2)
-                            .map(|s| f32::from(i16::from_le_bytes([s[0], s[1]])))
-                            .sum();
-                        self.samples
-                            .push(sum / (channels as f32 * f32::from(i16::MAX)));
+                        let sample = |i: usize| {
+                            let s = &frame[2 * i..2 * i + 2];
+                            f32::from(i16::from_le_bytes([s[0], s[1]])) / f32::from(i16::MAX)
+                        };
+                        let sum: f32 = (0..channels).map(sample).sum();
+                        self.samples.push(sum / channels as f32);
+                        self.left.push(sample(0));
+                        self.right.push(sample(channels.min(2) - 1));
                     }
                     pending.drain(..usable);
-                    let excess = self.samples.len().saturating_sub(FFT_SIZE);
-                    self.samples.drain(..excess);
+                    keep_last(&mut self.samples, FFT_SIZE);
+                    keep_last(&mut self.left, WAVE_SAMPLES);
+                    keep_last(&mut self.right, WAVE_SAMPLES);
                     last_data = Instant::now();
                     silent = false;
                 }
@@ -180,6 +194,8 @@ impl Reader {
                     if !silent {
                         silent = true;
                         self.samples.fill(0.0);
+                        self.left.fill(0.0);
+                        self.right.fill(0.0);
                         self.analyze();
                     }
                 } else {
@@ -203,16 +219,23 @@ impl Reader {
         // A full-scale sine yields |X| = N/4 with a Hann window.
         let scale = 4.0 / FFT_SIZE as f32;
         let magnitudes = output.iter().map(|c| c.norm() * scale).collect();
-        self.publish(Spectrum {
+        self.publish(AudioFrame {
             magnitudes,
             bin_hz: self.config.sample_rate as f32 / FFT_SIZE as f32,
+            left: self.left.clone(),
+            right: self.right.clone(),
             error: None,
         });
     }
 
-    fn publish(&self, spectrum: Spectrum) {
+    fn publish(&self, spectrum: AudioFrame) {
         let _ = self.tx.send(Arc::new(spectrum));
     }
+}
+
+fn keep_last(samples: &mut Vec<f32>, len: usize) {
+    let excess = samples.len().saturating_sub(len);
+    samples.drain(..excess);
 }
 
 fn open_fifo(config: &VisualizerConfig) -> io::Result<File> {
