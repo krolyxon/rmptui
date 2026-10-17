@@ -15,7 +15,7 @@ use super::{
     commands,
     connection::{Address, Connection},
     error::{MpdError, MpdResult},
-    protocol::Command,
+    protocol::{Command, Pair},
     types::{
         Album, DirEntry, PlaylistInfo, Song, Status, Subsystem, parse_albums, parse_entries,
         parse_playlists, parse_songs, parse_subsystems, parse_tag_values,
@@ -296,11 +296,59 @@ async fn execute(conn: &mut Connection, request: &Request) -> MpdResult<Option<R
         }
         Request::LoadAndPlay { name, offset } => {
             let start = queue_length(conn).await?;
-            conn.execute_all(&[commands::load(name), commands::play_pos(start + offset)])
+            let entries = conn.execute(&Command::new("listplaylist").arg(name)).await?;
+            conn.execute(&commands::load(name)).await?;
+            // `load` silently skips entries the server cannot resolve, so the
+            // playlist index is not necessarily the queue offset.
+            let added = conn
+                .execute(&Command::new("playlistinfo").arg(format!("{start}:")))
+                .await?;
+            let entries: Vec<&str> = files(&entries).collect();
+            let added: Vec<&str> = files(&added).collect();
+            let Some(pos) = queued_offset(&entries, &added, *offset as usize) else {
+                return Ok(None);
+            };
+            conn.execute(&commands::play_pos(start + pos as u32))
                 .await
-                .map(|()| None)
+                .map(|_| None)
         }
     }
+}
+
+fn files(pairs: &[Pair]) -> impl Iterator<Item = &str> {
+    pairs
+        .iter()
+        .filter(|(key, _)| key == "file")
+        .map(|(_, value)| value.as_str())
+}
+
+/// Where playlist entry `index` ended up among the songs `load` appended,
+/// matching entries in order and skipping the ones that were dropped.
+fn queued_offset(entries: &[&str], added: &[&str], index: usize) -> Option<usize> {
+    if entries.len() == added.len() {
+        return (index < added.len()).then_some(index);
+    }
+    let mut pos = 0;
+    for (i, entry) in entries.iter().enumerate() {
+        let matched = added.get(pos).is_some_and(|song| same_song(entry, song));
+        if i == index {
+            // The entry was skipped: play whatever followed it instead.
+            return (pos < added.len()).then_some(pos);
+        }
+        if matched {
+            pos += 1;
+        }
+    }
+    None
+}
+
+/// Playlists may store absolute paths, which `load` turns into paths
+/// relative to the music directory.
+fn same_song(entry: &str, queued: &str) -> bool {
+    entry == queued
+        || entry
+            .strip_suffix(queued)
+            .is_some_and(|prefix| prefix.ends_with('/'))
 }
 
 async fn queue_length(conn: &mut Connection) -> MpdResult<u32> {
@@ -400,4 +448,28 @@ async fn run_query(conn: &mut Connection, query: &Query) -> MpdResult<Reply> {
             Reply::MusicDirectory(dir)
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::queued_offset;
+
+    #[test]
+    fn queued_offset_skips_dropped_entries() {
+        let entries = ["gone.mp3", "a.mp3", "b.mp3", "missing.mp3", "c.mp3"];
+        let added = ["a.mp3", "b.mp3", "c.mp3"];
+        assert_eq!(queued_offset(&entries, &added, 1), Some(0));
+        assert_eq!(queued_offset(&entries, &added, 2), Some(1));
+        assert_eq!(queued_offset(&entries, &added, 4), Some(2));
+        // A dropped entry plays the song after it.
+        assert_eq!(queued_offset(&entries, &added, 0), Some(0));
+        assert_eq!(queued_offset(&entries, &added, 3), Some(2));
+    }
+
+    #[test]
+    fn queued_offset_matches_absolute_paths() {
+        let entries = ["/music/x.mp3", "gone.mp3", "/music/y.mp3"];
+        let added = ["x.mp3", "y.mp3"];
+        assert_eq!(queued_offset(&entries, &added, 2), Some(1));
+    }
 }
