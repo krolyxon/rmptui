@@ -20,6 +20,23 @@ pub enum Address {
     Unix(PathBuf),
 }
 
+impl Address {
+    /// Whether the server runs on this machine.
+    pub fn is_local(&self) -> bool {
+        match self {
+            Self::Unix(_) => true,
+            Self::Tcp(addr) => {
+                let host = addr
+                    .rsplit_once(':')
+                    .map_or(addr.as_str(), |(host, _)| host)
+                    .trim_start_matches('[')
+                    .trim_end_matches(']');
+                matches!(host, "localhost" | "127.0.0.1" | "::1") || host.starts_with("127.")
+            }
+        }
+    }
+}
+
 impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

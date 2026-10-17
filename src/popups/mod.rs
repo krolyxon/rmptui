@@ -50,9 +50,9 @@ fn frame_popup(
         .flex(Flex::Center)
         .areas(area);
     let block = Block::bordered()
-        .border_type(BorderType::Rounded)
-        .border_style(ctx.theme().accent())
-        .title(Line::from(format!(" {title} ")).style(ctx.theme().accent()));
+        .border_type(BorderType::Plain)
+        .border_style(ctx.theme().border())
+        .title(Line::from(format!(" {title} ")).style(ctx.theme().header()));
     let inner = block.inner(area);
     frame.render_widget(Clear, area);
     frame.render_widget(block, area);

@@ -2,7 +2,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Rect},
     text::Span,
-    widgets::{Block, Row},
+    widgets::Row,
 };
 
 use super::{InputPopup, InputPurpose, Popup, PopupState, frame_popup};
@@ -81,7 +81,6 @@ impl Popup for AddToPlaylistPopup {
         self.list.render(
             frame,
             inner,
-            Block::new(),
             None,
             &[Constraint::Fill(1)],
             choices.len(),
@@ -89,8 +88,8 @@ impl Popup for AddToPlaylistPopup {
             theme,
             |i| {
                 Row::new([match &choices[i] {
-                    Choice::Queue => Span::styled("Current queue", theme.accent()),
-                    Choice::NewPlaylist => Span::styled("New playlist…", theme.accent()),
+                    Choice::Queue => Span::styled("Current queue", theme.header()),
+                    Choice::NewPlaylist => Span::styled("New playlist…", theme.header()),
                     Choice::Playlist(name) => Span::styled(name.clone(), theme.text()),
                 }])
             },

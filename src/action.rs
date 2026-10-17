@@ -210,12 +210,12 @@ impl Action {
             | SeekBackward | VolumeUp | VolumeDown | ToggleMute | ToggleRepeat | ToggleRandom
             | ToggleSingle | ToggleConsume | UpdateDatabase | NextScreen | PreviousScreen
             | ScreenQueue | ScreenBrowser | ScreenPlaylists | ScreenLibrary | ScreenTagEditor
-            | ScreenVisualizer | ScreenLyrics => &[C::Global],
+            | ScreenVisualizer | ScreenLyrics | ClearQueue => &[C::Global],
             Up | Down | Top | Bottom | PageUp | PageDown | HalfPageUp | HalfPageDown | Left
             | Right | Activate | ToggleMark | ClearMarks | Search | SearchNext | SearchPrevious
             | AddToQueue | AddToPlaylist => &[C::Navigation],
             Delete | MoveItemUp | MoveItemDown => &[C::Queue, C::Playlists],
-            ClearQueue | ShuffleQueue | SaveQueue | JumpToCurrent | ToggleLyricsPane => &[C::Queue],
+            ShuffleQueue | SaveQueue | JumpToCurrent | ToggleLyricsPane => &[C::Queue],
             DeletePlaylist | RenamePlaylist => &[C::Playlists],
             ToggleArtistTag => &[C::Library],
             SaveTags | RevertTags => &[C::TagEditor],

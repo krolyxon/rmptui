@@ -1,4 +1,12 @@
-//! Widgets and the parts of the frame shared by all screens.
+//! The ncmpcpp-style frame shared by all screens, plus common widgets.
+//!
+//! ```text
+//! Title of the screen                                        Volume: 100%
+//! ──────────────────────────────────────────────────────────────────[rz]─
+//! (screen)
+//! ━━━━━━━━━━━━━━━━━━━━━
+//! Playing: "Title" by Artist in Album (Year)        (320 kbps) [1:41/3:56]
+//! ```
 
 pub mod input;
 pub mod list;
@@ -7,32 +15,191 @@ use std::time::Duration;
 
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Layout, Rect},
+    layout::{Constraint, Layout, Rect},
     style::{Modifier, Style},
+    symbols,
     text::{Line, Span},
-    widgets::{Block, BorderType, Paragraph},
+    widgets::{Cell, Paragraph, Row},
 };
 use unicode_width::UnicodeWidthStr;
 
 use crate::{
-    action::ScreenId,
-    config::{ColumnField, Theme},
+    config::{Column, ColumnField, Theme},
     mpd::{PlayState, Song},
     state::MpdState,
     util::format_duration,
 };
 
-/// A bordered pane; focused panes get the accent color.
-pub fn pane<'a>(title: impl Into<Line<'a>>, focused: bool, theme: &Theme) -> Block<'a> {
-    let style = if focused {
-        theme.accent()
-    } else {
-        theme.border()
+/// The rows of the frame around the active screen.
+pub struct FrameLayout {
+    pub title: Rect,
+    pub separator: Rect,
+    pub body: Rect,
+    pub progress: Rect,
+    pub status: Rect,
+}
+
+impl FrameLayout {
+    pub fn new(area: Rect) -> Self {
+        let [title, separator, body, progress, status] = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+        ])
+        .areas(area);
+        Self {
+            title,
+            separator,
+            body,
+            progress,
+            status,
+        }
+    }
+}
+
+/// Draws the title row and the line below it.
+pub fn draw_title(
+    frame: &mut Frame,
+    layout: &FrameLayout,
+    title: Line,
+    mpd: &MpdState,
+    theme: &Theme,
+) {
+    let volume = match mpd.status.volume {
+        _ if !mpd.connected => "Not connected".to_owned(),
+        Some(0) => "Volume: muted".to_owned(),
+        Some(v) => format!("Volume: {v}%"),
+        None => "Volume: n/a".to_owned(),
     };
-    Block::bordered()
-        .border_type(BorderType::Rounded)
-        .border_style(style)
-        .title(title.into().style(style))
+    let [left, right] = Layout::horizontal([
+        Constraint::Fill(1),
+        Constraint::Length(volume.width() as u16),
+    ])
+    .areas(layout.title);
+    frame.render_widget(title.style(theme.header()), left);
+    frame.render_widget(Span::styled(volume, theme.dim()), right);
+
+    // Active modes sit on the line, ncmpcpp style: ───[rz]─
+    let status = &mpd.status;
+    let flags: String = [
+        (status.repeat, 'r'),
+        (status.random, 'z'),
+        (status.single.is_on(), 's'),
+        (status.consume.is_on(), 'c'),
+        (status.updating_db, 'U'),
+    ]
+    .iter()
+    .filter(|(on, _)| *on)
+    .map(|(_, c)| *c)
+    .collect();
+    draw_hline(frame, layout.separator, theme);
+    if !flags.is_empty() {
+        let text = format!("[{flags}]");
+        let width = text.width() as u16;
+        let x = layout.separator.right().saturating_sub(width + 1);
+        let area = Rect::new(x, layout.separator.y, width, 1);
+        frame.render_widget(
+            Span::styled(text, theme.text().add_modifier(Modifier::BOLD)),
+            area,
+        );
+    }
+}
+
+/// A horizontal `─` line across `area`.
+pub fn draw_hline(frame: &mut Frame, area: Rect, theme: &Theme) {
+    frame.render_widget(
+        Span::styled(
+            symbols::line::HORIZONTAL.repeat(usize::from(area.width)),
+            theme.border(),
+        ),
+        area,
+    );
+}
+
+/// Splits `area` into columns separated by `│` lines and draws the lines.
+pub fn split_columns(
+    frame: &mut Frame,
+    area: Rect,
+    constraints: &[Constraint],
+    theme: &Theme,
+) -> Vec<Rect> {
+    let mut with_separators = Vec::with_capacity(constraints.len() * 2);
+    for (i, constraint) in constraints.iter().enumerate() {
+        if i > 0 {
+            with_separators.push(Constraint::Length(1));
+        }
+        with_separators.push(*constraint);
+    }
+    let areas = Layout::horizontal(with_separators).split(area);
+    let mut columns = Vec::with_capacity(constraints.len());
+    for (i, rect) in areas.iter().enumerate() {
+        if i % 2 == 1 {
+            let line: Vec<Line> = (0..rect.height)
+                .map(|_| Line::styled(symbols::line::VERTICAL, theme.border()))
+                .collect();
+            frame.render_widget(Paragraph::new(line), *rect);
+        } else {
+            columns.push(*rect);
+        }
+    }
+    columns
+}
+
+/// Column widths of a song table.
+pub fn song_widths(columns: &[Column]) -> Vec<Constraint> {
+    columns
+        .iter()
+        .map(|c| match c.field {
+            ColumnField::Duration | ColumnField::Track | ColumnField::Disc => {
+                Constraint::Length(c.width)
+            }
+            _ => Constraint::Fill(c.width),
+        })
+        .collect()
+}
+
+/// The header row of a song table.
+pub fn song_header(columns: &[Column]) -> Row<'static> {
+    Row::new(columns.iter().map(|c| {
+        let title = c.field.title();
+        match c.field {
+            ColumnField::Duration => Cell::from(Line::from(title).right_aligned()),
+            _ => Cell::from(title),
+        }
+    }))
+}
+
+/// One song as a table row. The playing song is prefixed with `> `.
+pub fn song_row(song: &Song, columns: &[Column], playing: bool, theme: &Theme) -> Row<'static> {
+    let cells = columns.iter().enumerate().map(|(i, c)| {
+        let mut text = song_field(song, c.field);
+        if playing && i == 0 {
+            text.insert_str(0, "> ");
+        }
+        let style = match c.field {
+            ColumnField::Artist | ColumnField::AlbumArtist => Style::new().fg(theme.artist),
+            ColumnField::Track | ColumnField::Disc => Style::new().fg(theme.track),
+            ColumnField::Album => Style::new().fg(theme.album),
+            ColumnField::Duration => Style::new().fg(theme.duration),
+            _ => theme.text(),
+        };
+        match c.field {
+            ColumnField::Duration => Cell::from(Line::styled(text, style).right_aligned()),
+            // Track numbers are padded like ncmpcpp: ` 1` → `01`.
+            ColumnField::Track | ColumnField::Disc if !text.is_empty() => {
+                Cell::from(Span::styled(format!("{text:0>2}"), style))
+            }
+            _ => Cell::from(Span::styled(text, style)),
+        }
+    });
+    let row = Row::new(cells);
+    if playing {
+        row.style(theme.playing())
+    } else {
+        row
+    }
 }
 
 /// The text of one song column.
@@ -49,15 +216,24 @@ pub fn song_field(song: &Song, field: ColumnField) -> String {
         ColumnField::Duration => return song.duration.map(format_duration).unwrap_or_default(),
         ColumnField::File => Some(song.file.as_str()),
     };
-    text.unwrap_or_default().to_owned()
+    clean(text.unwrap_or_default())
+}
+
+/// Removes zero-width characters (variation selectors, joiners) for display.
+/// Terminals and ratatui disagree on their width, which leaves stray
+/// characters on screen.
+pub fn clean(text: &str) -> String {
+    text.chars()
+        .filter(|c| !matches!(c, '\u{FE00}'..='\u{FE0F}' | '\u{200B}'..='\u{200D}' | '\u{2060}'))
+        .collect()
 }
 
 /// `Artist - Title`, or just the title.
 pub fn song_label(song: &Song) -> String {
-    match song.artist() {
+    clean(&match song.artist() {
         Some(artist) => format!("{artist} - {}", song.display_title()),
         None => song.display_title().to_owned(),
-    }
+    })
 }
 
 /// The text a song is searched by.
@@ -70,259 +246,92 @@ pub fn song_search_text(song: &Song) -> String {
     )
 }
 
-/// The rows of the frame around the active screen.
-pub struct FrameLayout {
-    pub header: Rect,
-    pub tabs: Rect,
-    pub body: Rect,
-    pub progress: Rect,
-    pub status: Rect,
-}
-
-impl FrameLayout {
-    pub fn new(area: Rect) -> Self {
-        let [header, tabs, body, progress, status] = Layout::vertical([
-            Constraint::Length(2),
-            Constraint::Length(1),
-            Constraint::Fill(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-        ])
-        .areas(area);
-        Self {
-            header,
-            tabs,
-            body,
-            progress,
-            status,
-        }
-    }
-}
-
-pub fn draw_header(frame: &mut Frame, area: Rect, mpd: &MpdState, theme: &Theme) {
-    let [top, bottom] = Layout::vertical([Constraint::Length(1); 2]).areas(area);
-    let status = &mpd.status;
-
-    let (icon, title, details) = match (&mpd.current, mpd.connected) {
-        (_, false) => ("✕", "Not connected".to_owned(), String::new()),
-        (Some(song), true) => {
-            let icon = match status.state {
-                PlayState::Play => "▶",
-                PlayState::Pause => "⏸",
-                PlayState::Stop => "■",
-            };
-            let mut details = song.artist().unwrap_or("Unknown artist").to_owned();
-            if let Some(album) = song.album() {
-                details.push_str(" — ");
-                details.push_str(album);
-                if let Some(date) = song.tag("Date") {
-                    details.push_str(&format!(" ({date})"));
-                }
-            }
-            (icon, song.display_title().to_owned(), details)
-        }
-        (None, true) => ("■", "Stopped".to_owned(), String::new()),
-    };
-
-    let flag = |on: bool, letter: &'static str| {
-        if on {
-            Span::styled(letter, theme.accent().add_modifier(Modifier::BOLD))
-        } else {
-            Span::styled(letter, theme.dim())
-        }
-    };
-    let volume = status
-        .volume
-        .map_or_else(|| "vol n/a".to_owned(), |v| format!("vol {v:>3}%"));
-    let right = Line::from(vec![
-        Span::styled(volume, theme.text()),
-        Span::styled("  [", theme.dim()),
-        flag(status.repeat, "r"),
-        flag(status.random, "z"),
-        flag(status.single.is_on(), "s"),
-        flag(status.consume.is_on(), "c"),
-        Span::styled("]", theme.dim()),
-    ]);
-    let mut audio = Vec::new();
-    if status.updating_db {
-        audio.push("updating database".to_owned());
-    }
-    if let Some(bitrate) = status.bitrate {
-        audio.push(format!("{bitrate} kbps"));
-    }
-    if let Some(format) = status.audio.as_deref() {
-        audio.push(format_audio(format));
-    }
-    let right_width = right.width() as u16;
-
-    let [title_area, flags_area] =
-        Layout::horizontal([Constraint::Fill(1), Constraint::Length(right_width + 1)]).areas(top);
-    frame.render_widget(
-        Line::from(vec![
-            Span::styled(format!(" {icon} "), theme.accent()),
-            Span::styled(title, theme.text().add_modifier(Modifier::BOLD)),
-        ]),
-        title_area,
-    );
-    frame.render_widget(right.alignment(Alignment::Right), flags_area);
-
-    let audio = audio.join(" · ");
-    let [details_area, audio_area] = Layout::horizontal([
-        Constraint::Fill(1),
-        Constraint::Length(audio.width() as u16 + 1),
-    ])
-    .areas(bottom);
-    frame.render_widget(
-        Line::from(Span::styled(format!("   {details}"), theme.dim())),
-        details_area,
-    );
-    frame.render_widget(
-        Line::from(Span::styled(audio, theme.dim())).alignment(Alignment::Right),
-        audio_area,
-    );
-}
-
-/// `44100:16:2` → `44.1 kHz · 16 bit · stereo`.
-fn format_audio(format: &str) -> String {
-    let mut parts = format.split(':');
-    let (Some(rate), Some(bits), Some(channels)) = (parts.next(), parts.next(), parts.next())
-    else {
-        return format.to_owned();
-    };
-    let rate = rate
-        .parse::<f64>()
-        .map_or_else(|_| rate.to_owned(), |r| format!("{} kHz", r / 1000.0));
-    let bits = match bits {
-        "f" => "float".to_owned(),
-        "dsd" => "DSD".to_owned(),
-        bits => format!("{bits} bit"),
-    };
-    let channels = match channels {
-        "1" => "mono".to_owned(),
-        "2" => "stereo".to_owned(),
-        n => format!("{n} ch"),
-    };
-    format!("{rate} · {bits} · {channels}")
-}
-
-/// Draws the tab bar and returns each tab's horizontal span for mouse hits.
-pub fn draw_tabs(
-    frame: &mut Frame,
-    area: Rect,
-    active: ScreenId,
-    theme: &Theme,
-) -> Vec<(u16, u16, ScreenId)> {
-    let mut spans = vec![Span::raw(" ")];
-    let mut hits = Vec::new();
-    let mut x = area.x + 1;
-    for (i, &screen) in ScreenId::ALL.iter().enumerate() {
-        let label = format!(" {} {} ", i + 1, screen.title());
-        let width = label.width() as u16;
-        let style = if screen == active {
-            theme.selection().add_modifier(Modifier::BOLD)
-        } else {
-            theme.dim()
-        };
-        hits.push((x, x + width, screen));
-        x += width + 1;
-        spans.push(Span::styled(label, style));
-        spans.push(Span::raw(" "));
-    }
-    frame.render_widget(Line::from(spans), area);
-    hits
-}
-
-/// Draws `elapsed ━━━━──── total`.
+/// Draws the thin progress bar.
 pub fn draw_progress(frame: &mut Frame, area: Rect, mpd: &MpdState, theme: &Theme) {
-    let elapsed = mpd.elapsed();
     let total = mpd.status.duration.unwrap_or_default();
-    let left = format!(" {} ", format_duration(elapsed));
-    let right = format!(" {} ", format_duration(total));
-    let [left_area, bar, right_area] = progress_layout(area, &left, &right);
-    frame.render_widget(Span::styled(left, theme.dim()), left_area);
-    frame.render_widget(Span::styled(right, theme.dim()), right_area);
-
-    let width = usize::from(bar.width);
+    let width = usize::from(area.width);
     let filled = if total.is_zero() || mpd.status.state == PlayState::Stop {
         0
     } else {
-        ((elapsed.as_secs_f64() / total.as_secs_f64()) * width as f64).round() as usize
+        ((mpd.elapsed().as_secs_f64() / total.as_secs_f64()) * width as f64).round() as usize
     }
     .min(width);
     frame.render_widget(
-        Line::from(vec![
-            Span::styled("━".repeat(filled), theme.accent()),
-            Span::styled("─".repeat(width - filled), theme.border()),
-        ]),
-        bar,
+        Span::styled(
+            symbols::line::THICK_HORIZONTAL.repeat(filled),
+            Style::new().fg(theme.progress_filled),
+        ),
+        area,
     );
-}
-
-fn progress_layout(area: Rect, left: &str, right: &str) -> [Rect; 3] {
-    Layout::horizontal([
-        Constraint::Length(left.width() as u16),
-        Constraint::Fill(1),
-        Constraint::Length(right.width() as u16),
-    ])
-    .areas(area)
 }
 
 /// Maps a click on the progress bar to a position in the song.
 pub fn progress_seek_target(area: Rect, x: u16, mpd: &MpdState) -> Option<Duration> {
     let total = mpd.status.duration?;
-    let left = format!(" {} ", format_duration(mpd.elapsed()));
-    let right = format!(" {} ", format_duration(total));
-    let [_, bar, _] = progress_layout(area, &left, &right);
-    if bar.width == 0 || x < bar.x || x >= bar.right() {
+    if area.width == 0 || x < area.x || x >= area.right() {
         return None;
     }
-    let fraction = f64::from(x - bar.x) / f64::from(bar.width);
-    Some(total.mul_f64(fraction))
+    Some(total.mul_f64(f64::from(x - area.x) / f64::from(area.width)))
+}
+
+/// `Playing: "Title" by Artist in Album (Year)` and `(320 kbps) [1:41/3:56]`.
+pub fn draw_now_playing(frame: &mut Frame, area: Rect, mpd: &MpdState, theme: &Theme) {
+    let status = &mpd.status;
+    let (Some(song), PlayState::Play | PlayState::Pause) = (&mpd.current, status.state) else {
+        return;
+    };
+    let mut right = String::new();
+    if let Some(bitrate) = status.bitrate {
+        right.push_str(&format!("({bitrate} kbps) "));
+    }
+    right.push_str(&format!(
+        "[{}/{}]",
+        format_duration(mpd.elapsed()),
+        format_duration(status.duration.unwrap_or_default())
+    ));
+    let [left_area, right_area] = Layout::horizontal([
+        Constraint::Fill(1),
+        Constraint::Length(right.width() as u16),
+    ])
+    .areas(area);
+
+    let state = if status.state == PlayState::Play {
+        "Playing: "
+    } else {
+        "Paused: "
+    };
+    let bold = theme.text().add_modifier(Modifier::BOLD);
+    let mut spans = vec![
+        Span::styled(state, theme.dim()),
+        Span::styled(format!("\"{}\"", clean(song.display_title())), bold),
+    ];
+    if let Some(artist) = song.artist() {
+        spans.push(Span::styled(" by ", theme.dim()));
+        spans.push(Span::styled(clean(artist), theme.text()));
+    }
+    if let Some(album) = song.album() {
+        spans.push(Span::styled(" in ", theme.dim()));
+        let album = match song.tag("Date") {
+            Some(date) => format!("{album} ({})", date.chars().take(4).collect::<String>()),
+            None => album.to_owned(),
+        };
+        spans.push(Span::styled(clean(&album), theme.text()));
+    }
+    frame.render_widget(Line::from(spans), left_area);
+    frame.render_widget(Span::styled(right, theme.text()), right_area);
 }
 
 /// A one-line message, styled as an error if needed.
 pub fn draw_message(frame: &mut Frame, area: Rect, text: &str, error: bool, theme: &Theme) {
     let style = if error { theme.error() } else { theme.text() };
-    frame.render_widget(
-        Paragraph::new(Line::from(Span::styled(format!(" {text}"), style))),
-        area,
-    );
-}
-
-/// Key hints shown in the status line when nothing else is.
-pub fn draw_hint(frame: &mut Frame, area: Rect, text: &str, theme: &Theme) {
-    frame.render_widget(
-        Line::from(Span::styled(format!(" {text}"), theme.dim())).alignment(Alignment::Left),
-        area,
-    );
+    frame.render_widget(Span::styled(text.to_owned(), style), area);
 }
 
 /// A centered, dimmed placeholder for empty panes.
 pub fn draw_placeholder(frame: &mut Frame, area: Rect, lines: &[&str], theme: &Theme) {
     let top = area.height.saturating_sub(lines.len() as u16) / 2;
     let text: Vec<Line> = std::iter::repeat_n(Line::default(), usize::from(top))
-        .chain(
-            lines
-                .iter()
-                .map(|l| Line::from(Span::styled(*l, theme.dim()))),
-        )
+        .chain(lines.iter().map(|l| Line::styled(*l, theme.dim())))
         .collect();
-    frame.render_widget(
-        Paragraph::new(text)
-            .alignment(Alignment::Center)
-            .style(Style::new()),
-        area,
-    );
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn formats_audio() {
-        assert_eq!(format_audio("44100:16:2"), "44.1 kHz · 16 bit · stereo");
-        assert_eq!(format_audio("96000:f:1"), "96 kHz · float · mono");
-        assert_eq!(format_audio("weird"), "weird");
-    }
+    frame.render_widget(Paragraph::new(text).centered(), area);
 }

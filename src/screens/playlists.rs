@@ -3,8 +3,8 @@
 use crossterm::event::MouseEvent;
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Position, Rect},
-    text::{Line, Span},
+    layout::{Constraint, Position, Rect},
+    text::Line,
     widgets::{Cell, Row},
 };
 
@@ -15,9 +15,8 @@ use crate::{
     popups::{AddToPlaylistPopup, ConfirmPopup, InputPopup, InputPurpose},
     ui::{
         self,
-        list::{Click, ListView},
+        list::{Click, Header, ListView},
     },
-    util::format_duration,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -102,102 +101,51 @@ impl PlaylistsScreen {
 }
 
 impl Screen for PlaylistsScreen {
+    fn title(&self, _ctx: &Ctx) -> Line<'static> {
+        Line::from("Playlist editor")
+    }
+
     fn draw(&mut self, frame: &mut Frame, area: Rect, ctx: &Ctx) {
         let theme = ctx.theme();
-        let [left, right] =
-            Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
-                .areas(area);
+        let [left, right] = <[Rect; 2]>::try_from(ui::split_columns(
+            frame,
+            area,
+            &[Constraint::Percentage(25), Constraint::Percentage(75)],
+            theme,
+        ))
+        .expect("two columns");
 
         let playlists = &ctx.mpd.playlists;
         let list_focused = self.focus == Focus::Playlists;
-        let block = ui::pane(
-            format!(" Playlists ({}) ", playlists.len()),
+        self.playlists.render(
+            frame,
+            left,
+            Some(Header::Title(Line::from("Playlists"))),
+            &[Constraint::Fill(1)],
+            playlists.len(),
             list_focused,
             theme,
+            |i| Row::new([Cell::from(ui::clean(&playlists[i].name))]),
         );
-        if playlists.is_empty() {
-            let inner = block.inner(left);
-            frame.render_widget(block, left);
-            ui::draw_placeholder(
-                frame,
-                inner,
-                &["No playlists", "", "Create one with `a` on any song"],
-                theme,
-            );
-        } else {
-            self.playlists.render(
-                frame,
-                left,
-                block,
-                None,
-                &[Constraint::Fill(1)],
-                playlists.len(),
-                list_focused,
-                theme,
-                |i| Row::new([Cell::from(playlists[i].name.as_str())]),
-            );
-        }
 
         let contents = &self.contents;
-        let total: std::time::Duration = contents.iter().filter_map(|s| s.duration).sum();
-        let title = match &self.songs_of {
-            Some(name) => Line::from(vec![
-                Span::raw(format!(" {name} ")),
-                Span::styled(
-                    format!("{} songs · {} ", contents.len(), format_duration(total)),
-                    theme.dim(),
-                ),
-            ]),
-            None => Line::from(" Songs "),
-        };
-        let block = ui::pane(title, !list_focused, theme);
-        if contents.is_empty() {
-            let inner = block.inner(right);
-            frame.render_widget(block, right);
-            let text = if self.songs_of.is_some() {
-                "This playlist is empty"
-            } else {
-                ""
-            };
-            ui::draw_placeholder(frame, inner, &[text], theme);
-            return;
-        }
+        let columns = &ctx.config.ui.song_columns;
         self.songs.render(
             frame,
             right,
-            block,
-            None,
-            &[
-                Constraint::Fill(3),
-                Constraint::Fill(4),
-                Constraint::Fill(3),
-                Constraint::Length(7),
-            ],
+            Some(Header::Columns(ui::song_header(columns))),
+            &ui::song_widths(columns),
             contents.len(),
             !list_focused,
             theme,
             |i| {
                 let song = &contents[i];
-                let style = if ctx
+                let playing = ctx
                     .mpd
                     .current
                     .as_ref()
-                    .is_some_and(|c| c.file == song.file)
-                {
-                    theme.playing()
-                } else {
-                    theme.text()
-                };
-                Row::new([
-                    Cell::from(song.artist().unwrap_or_default().to_owned()),
-                    Cell::from(song.display_title().to_owned()),
-                    Cell::from(song.album().unwrap_or_default().to_owned()),
-                    Cell::from(Span::styled(
-                        song.duration.map(format_duration).unwrap_or_default(),
-                        theme.dim(),
-                    )),
-                ])
-                .style(style)
+                    .is_some_and(|c| c.file == song.file);
+                ui::song_row(song, columns, playing, theme)
             },
         );
     }

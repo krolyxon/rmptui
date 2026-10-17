@@ -35,9 +35,46 @@ pub fn format_duration(duration: Duration) -> String {
     }
 }
 
+/// Spells out a duration like ncmpcpp: `1 hour, 3 minutes, 56 seconds`.
+pub fn format_length(duration: Duration) -> String {
+    let secs = duration.as_secs();
+    let parts = [
+        (secs / 86_400, "day"),
+        (secs / 3600 % 24, "hour"),
+        (secs / 60 % 60, "minute"),
+        (secs % 60, "second"),
+    ];
+    let words: Vec<String> = parts
+        .iter()
+        .filter(|(n, _)| *n > 0)
+        .map(|(n, unit)| format!("{n} {unit}{}", if *n == 1 { "" } else { "s" }))
+        .collect();
+    if words.is_empty() {
+        "0 seconds".to_owned()
+    } else {
+        words.join(", ")
+    }
+}
+
+/// `1 item` / `3 items`.
+pub fn plural(count: usize, noun: &str) -> String {
+    format!("{count} {noun}{}", if count == 1 { "" } else { "s" })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn formats_lengths() {
+        assert_eq!(
+            format_length(Duration::from_secs(236)),
+            "3 minutes, 56 seconds"
+        );
+        assert_eq!(format_length(Duration::from_secs(3601)), "1 hour, 1 second");
+        assert_eq!(format_length(Duration::ZERO), "0 seconds");
+        assert_eq!(plural(1, "item"), "1 item");
+    }
 
     #[test]
     fn formats_durations() {

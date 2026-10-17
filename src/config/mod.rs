@@ -5,6 +5,7 @@
 //! leave out.
 
 mod keys;
+mod mpd_conf;
 mod theme;
 
 use std::{
@@ -19,6 +20,7 @@ use std::{
 use serde::Deserialize;
 
 pub use keys::{Bindings, KeyCombo, Keymap};
+pub use mpd_conf::local_music_directory;
 pub use theme::Theme;
 
 use crate::{action::ScreenId, mpd::Address, util::expand_tilde};
@@ -80,7 +82,7 @@ impl ColumnField {
             Self::AlbumArtist => "Album Artist",
             Self::Title => "Title",
             Self::Album => "Album",
-            Self::Track => "#",
+            Self::Track => "Track",
             Self::Disc => "Disc",
             Self::Date => "Date",
             Self::Genre => "Genre",
@@ -102,10 +104,11 @@ pub struct Column {
 pub struct UiConfig {
     pub startup_screen: ScreenId,
     pub mouse: bool,
+    pub confirm_clear_queue: bool,
     pub lyrics_pane: bool,
     pub lyrics_pane_width: u16,
     pub message_timeout: u64,
-    pub queue_columns: Vec<Column>,
+    pub song_columns: Vec<Column>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -246,8 +249,8 @@ impl Config {
             "ui.lyrics_pane_width must be between 10 and 90",
         )?;
         check(
-            !self.ui.queue_columns.is_empty(),
-            "ui.queue_columns cannot be empty",
+            !self.ui.song_columns.is_empty(),
+            "ui.song_columns cannot be empty",
         )?;
         let vis = &self.visualizer;
         check(
@@ -447,7 +450,7 @@ mod tests {
             "[mpd]\nport = 0",
             "[playback]\nvolume_step = 0",
             "[mpd]\nhots = \"typo\"",
-            "[theme]\naccent = \"notacolor\"",
+            "[theme]\ntext = \"notacolor\"",
             "[keys.global]\nquit = [\"Hyper+q\"]",
             "[keys.global]\nnot_an_action = [\"x\"]",
             // `p` is already bound to toggle_pause.

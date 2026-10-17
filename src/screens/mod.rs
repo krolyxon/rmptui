@@ -12,7 +12,7 @@ mod visualizer;
 use std::sync::Arc;
 
 use crossterm::event::MouseEvent;
-use ratatui::{Frame, layout::Rect};
+use ratatui::{Frame, layout::Rect, text::Line};
 use tokio::sync::watch;
 
 pub use browser::BrowserScreen;
@@ -95,9 +95,13 @@ pub enum Effect {
 #[derive(Clone, Debug)]
 pub enum ScreenMessage {
     TagValue { field: TagField, value: String },
+    FileName(String),
 }
 
 pub trait Screen {
+    /// The text of the title row.
+    fn title(&self, ctx: &Ctx) -> Line<'static>;
+
     fn draw(&mut self, frame: &mut Frame, area: Rect, ctx: &Ctx);
 
     /// Returns whether the action was handled.

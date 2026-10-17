@@ -37,9 +37,9 @@ impl Popup for ConfirmPopup {
             Line::from(self.message.as_str()),
             Line::default(),
             Line::from(vec![
-                Span::styled("[y]", theme.accent()),
+                Span::styled("[y]", theme.header()),
                 Span::raw("es  "),
-                Span::styled("[n]", theme.accent()),
+                Span::styled("[n]", theme.header()),
                 Span::raw("o"),
             ]),
         ];

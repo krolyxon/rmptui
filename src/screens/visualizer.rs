@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use ratatui::{Frame, layout::Rect};
+use ratatui::{Frame, layout::Rect, text::Line};
 use tokio::sync::watch;
 
 use super::{Ctx, Screen};
@@ -29,17 +29,14 @@ impl VisualizerScreen {
 }
 
 impl Screen for VisualizerScreen {
+    fn title(&self, _ctx: &Ctx) -> Line<'static> {
+        Line::from("Music visualizer")
+    }
+
     fn draw(&mut self, frame: &mut Frame, area: Rect, ctx: &Ctx) {
         let theme = ctx.theme();
         let config = &ctx.config.visualizer;
-        let title = match &ctx.mpd.current {
-            Some(song) => format!(" Visualizer · {} ", ui::song_label(song)),
-            None => " Visualizer ".to_owned(),
-        };
-        let block = ui::pane(title, true, theme);
-        let inner = block.inner(area);
-        frame.render_widget(block, area);
-
+        let inner = area;
         let spectrum = Arc::clone(&self.spectrum.borrow_and_update());
         if let Some(error) = &spectrum.error {
             let fifo = config.fifo.display().to_string();

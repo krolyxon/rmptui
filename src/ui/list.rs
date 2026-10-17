@@ -9,12 +9,13 @@ use nucleo_matcher::{
 };
 use ratatui::{
     Frame,
-    layout::{Constraint, Position, Rect},
+    layout::{Constraint, Layout, Position, Rect},
     style::{Modifier, Style},
-    widgets::{Block, Row, Table, TableState},
+    text::Line,
+    widgets::{Row, Table, TableState},
 };
 
-use crate::{action::Action, config::Theme};
+use crate::{action::Action, config::Theme, ui};
 
 /// Cursor, scroll offset and search state of a list.
 ///
@@ -137,28 +138,42 @@ impl ListView {
         }
     }
 
-    /// Draws rows `offset..offset + height` inside `block`.
+    /// Draws an optional header with a `─` line below it, then rows
+    /// `offset..offset + height`.
     #[allow(clippy::too_many_arguments)]
     pub fn render<'a>(
         &mut self,
         frame: &mut Frame,
         area: Rect,
-        block: Block<'a>,
-        header: Option<Row<'a>>,
+        header: Option<Header<'a>>,
         widths: &[Constraint],
         len: usize,
         focused: bool,
         theme: &Theme,
         mut row: impl FnMut(usize) -> Row<'a>,
     ) {
-        let inner = block.inner(area);
-        let header_height = u16::from(header.is_some());
-        self.rows_area = Rect {
-            y: inner.y + header_height,
-            height: inner.height.saturating_sub(header_height),
-            ..inner
-        };
-        self.height = usize::from(self.rows_area.height);
+        let mut rows_area = area;
+        if let Some(header) = header {
+            let [header_area, line_area, rest] = Layout::vertical([
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Fill(1),
+            ])
+            .areas(area);
+            match header {
+                Header::Title(title) => {
+                    frame.render_widget(title.style(theme.header()), header_area)
+                }
+                Header::Columns(columns) => frame.render_widget(
+                    Table::new([columns.style(theme.header())], widths.to_vec()).column_spacing(1),
+                    header_area,
+                ),
+            }
+            ui::draw_hline(frame, line_area, theme);
+            rows_area = rest;
+        }
+        self.rows_area = rows_area;
+        self.height = usize::from(rows_area.height);
         self.selected = self.selected.min(len.saturating_sub(1));
         if self.selected < self.offset {
             self.offset = self.selected;
@@ -183,19 +198,23 @@ impl ListView {
         } else {
             theme.selection_inactive()
         };
-        let mut table = Table::new(rows, widths.to_vec())
-            .block(block)
+        let table = Table::new(rows, widths.to_vec())
             .column_spacing(1)
             .row_highlight_style(highlight);
-        if let Some(header) = header {
-            table = table.header(header);
-        }
         let mut state = TableState::default();
         if len > 0 {
             state.select(Some(self.selected - self.offset));
         }
-        frame.render_stateful_widget(table, area, &mut state);
+        frame.render_stateful_widget(table, rows_area, &mut state);
     }
+}
+
+/// What is drawn above a list.
+pub enum Header<'a> {
+    /// A column title, e.g. `Directories`.
+    Title(Line<'a>),
+    /// Table column names.
+    Columns(Row<'a>),
 }
 
 /// Fuzzy search results over a list, kept in list order so that `n`/`N`

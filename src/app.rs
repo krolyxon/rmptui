@@ -13,11 +13,11 @@ use tracing::info;
 
 use crate::{
     action::{Action, Context, ScreenId},
-    config::{Config, KeyCombo},
+    config::{self, Config, KeyCombo},
     event::AppEvent,
     lyrics::LyricsService,
     mpd::{self, MpdEvent, MpdHandle, PlayState, Query, Reply, Subsystem, commands},
-    popups::{HelpPopup, Popup, PopupState},
+    popups::{ConfirmPopup, HelpPopup, Popup, PopupState},
     screens::{Ctx, Effect, Screens},
     state::MpdState,
     tags,
@@ -46,7 +46,6 @@ pub struct App {
     lyrics: LyricsService,
     visualizer: Visualizer,
     layout: Option<FrameLayout>,
-    tab_hits: Vec<(u16, u16, ScreenId)>,
     /// The volume before muting.
     muted_volume: Option<u8>,
     queue_requested: bool,
@@ -57,12 +56,17 @@ impl App {
     pub fn new(config: Config) -> anyhow::Result<Self> {
         let (address, password) = config.mpd_connection()?;
         info!("connecting to MPD at {address}");
+        // MPD only reports its music directory over a Unix socket; for a
+        // local server, its config file is the next best source.
+        let music_dir = config
+            .music_directory()
+            .or_else(|| config::local_music_directory(&address));
         let (events_tx, events_rx) = mpsc::unbounded_channel();
         let client = mpd::spawn(address, password, events_tx.clone());
         let visualizer = Visualizer::spawn(config.visualizer.clone());
         let screens = Screens::new(&config, visualizer.subscribe());
         let mut mpd = MpdState::default();
-        mpd.music_dir = config.music_directory();
+        mpd.music_dir = music_dir;
         let mut app = Self {
             lyrics: LyricsService::new(config.lyrics.clone(), events_tx.clone()),
             active: config.ui.startup_screen,
@@ -77,7 +81,6 @@ impl App {
             message: None,
             visualizer,
             layout: None,
-            tab_hits: Vec::new(),
             muted_volume: None,
             queue_requested: false,
             running: true,
@@ -320,6 +323,18 @@ impl App {
             Action::ToggleRandom => client.exec(commands::random(!status.random)),
             Action::ToggleSingle => client.exec(commands::single(!status.single.is_on())),
             Action::ToggleConsume => client.exec(commands::consume(!status.consume.is_on())),
+            Action::ClearQueue if self.mpd.queue.is_empty() => {}
+            Action::ClearQueue if self.config.ui.confirm_clear_queue => {
+                let popup = ConfirmPopup::new(
+                    format!("Remove all {} songs from the queue?", self.mpd.queue.len()),
+                    vec![commands::clear()],
+                );
+                self.popups.push(Box::new(popup));
+            }
+            Action::ClearQueue => {
+                client.exec(commands::clear());
+                self.notify("Cleared the queue".into(), false);
+            }
             Action::UpdateDatabase => {
                 client.exec(commands::update(None));
                 self.notify("Updating the database…".into(), false);
@@ -346,16 +361,7 @@ impl App {
         };
         let position = Position::new(mouse.column, mouse.row);
         let left_click = mouse.kind == MouseEventKind::Down(MouseButton::Left);
-        if layout.tabs.contains(position) {
-            if left_click
-                && let Some(&(_, _, screen)) = self
-                    .tab_hits
-                    .iter()
-                    .find(|(start, end, _)| (*start..*end).contains(&mouse.column))
-            {
-                self.switch_to(screen);
-            }
-        } else if layout.progress.contains(position) {
+        if layout.progress.contains(position) {
             if left_click
                 && self.mpd.status.state != PlayState::Stop
                 && let Some(target) =
@@ -442,7 +448,7 @@ impl App {
                 self.mpd.playlists.clone_from(playlists)
             }
             MpdEvent::Reply(Reply::MusicDirectory(dir)) => {
-                if self.config.music_directory().is_none() {
+                if self.config.music_directory().is_none() && dir.is_some() {
                     self.mpd.music_dir.clone_from(dir);
                 }
             }
@@ -496,13 +502,10 @@ impl App {
     fn draw(&mut self, frame: &mut Frame) {
         let layout = FrameLayout::new(frame.area());
         let theme = &self.config.theme;
-        ui::draw_header(frame, layout.header, &self.mpd, theme);
-        self.tab_hits = ui::draw_tabs(frame, layout.tabs, self.active, theme);
-
         let ctx = Ctx::new(&self.config, &self.mpd, &self.client, &self.lyrics.state);
-        self.screens
-            .get_mut(self.active)
-            .draw(frame, layout.body, &ctx);
+        let screen = self.screens.get_mut(self.active);
+        ui::draw_title(frame, &layout, screen.title(&ctx), &self.mpd, theme);
+        screen.draw(frame, layout.body, &ctx);
         ui::draw_progress(frame, layout.progress, &self.mpd, theme);
 
         if self
@@ -513,17 +516,11 @@ impl App {
             self.message = None;
         }
         if let Some(search) = &self.search {
-            search.render(frame, layout.status, " /", theme);
+            search.render(frame, layout.status, "/", theme);
         } else if let Some(message) = &self.message {
             ui::draw_message(frame, layout.status, &message.text, message.error, theme);
         } else {
-            let help = self
-                .config
-                .keymap
-                .keys_for(Context::Global, Action::Help)
-                .first()
-                .map_or_else(String::new, |key| format!("{key} for help"));
-            ui::draw_hint(frame, layout.status, &help, theme);
+            ui::draw_now_playing(frame, layout.status, &self.mpd, theme);
         }
         for popup in &mut self.popups {
             popup.draw(frame, frame.area(), &ctx);

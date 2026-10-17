@@ -121,7 +121,7 @@ impl LineInput {
             width += w;
         }
         let line = Line::from(vec![
-            Span::styled(prefix.to_owned(), theme.accent()),
+            Span::styled(prefix.to_owned(), theme.header()),
             Span::styled(visible, theme.text()),
         ]);
         frame.render_widget(line, area);

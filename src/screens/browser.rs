@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 use crossterm::event::MouseEvent;
 use ratatui::{
     Frame,
-    layout::{Constraint, Rect},
-    style::Modifier,
+    layout::{Constraint, Layout, Rect},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Cell, Row},
 };
@@ -19,9 +19,8 @@ use crate::{
     popups::AddToPlaylistPopup,
     ui::{
         self,
-        list::{Click, ListView},
+        list::{Click, Header, ListView},
     },
-    util::format_duration,
 };
 
 #[derive(Debug, Default)]
@@ -175,70 +174,62 @@ fn sort_entries(entries: &mut [DirEntry]) {
 }
 
 impl Screen for BrowserScreen {
+    fn title(&self, _ctx: &Ctx) -> Line<'static> {
+        Line::from(format!("Browse: /{}", ui::clean(&self.path)))
+    }
+
     fn draw(&mut self, frame: &mut Frame, area: Rect, ctx: &Ctx) {
         let theme = ctx.theme();
-        let title = Line::from(vec![
-            Span::raw(" Browse "),
-            Span::styled(format!("/{} ", self.path), theme.dim()),
-        ]);
-        if self.entries.is_empty() {
-            let block = ui::pane(title, true, theme);
-            let inner = block.inner(area);
-            frame.render_widget(block, area);
-            let text = if self.loaded {
-                "This folder is empty"
-            } else {
-                "Loading…"
-            };
-            ui::draw_placeholder(frame, inner, &[text], theme);
-            return;
-        }
+        let columns = &ctx.config.ui.song_columns;
+        let span = columns.len() as u16;
         let entries = &self.entries;
         let marks = &self.marks;
         self.list.render(
             frame,
             area,
-            ui::pane(title, true, theme),
-            None,
-            &[Constraint::Fill(1), Constraint::Length(8)],
+            Some(Header::Columns(ui::song_header(columns))),
+            &ui::song_widths(columns),
             entries.len(),
             true,
             theme,
             |i| {
-                let (label, duration, style) = match &entries[i] {
-                    DirEntry::Directory(_) => (
-                        format!("▸ {}/", entries[i].name()),
-                        String::new(),
+                // Folders and playlists span the whole row; songs use columns.
+                let row = match &entries[i] {
+                    DirEntry::Directory(_) => Row::new([Cell::from(Span::styled(
+                        format!("[{}]", ui::clean(entries[i].name())),
                         theme.directory(),
-                    ),
+                    ))
+                    .column_span(span)]),
                     DirEntry::Song(song) => {
-                        let style = if ctx.mpd.is_queued(&song.file) {
-                            theme.text().add_modifier(Modifier::BOLD)
+                        let row = ui::song_row(song, columns, ctx.mpd.is_current(song), theme);
+                        if ctx.mpd.is_queued(&song.file) {
+                            row.style(Style::new().add_modifier(Modifier::BOLD))
                         } else {
-                            theme.text()
-                        };
-                        (
-                            format!("  {}", ui::song_label(song)),
-                            song.duration.map(format_duration).unwrap_or_default(),
-                            style,
-                        )
+                            row
+                        }
                     }
-                    DirEntry::Playlist(name) => {
-                        (format!("≡ {name}"), String::new(), theme.accent())
-                    }
+                    DirEntry::Playlist(name) => Row::new([Cell::from(Line::from(vec![
+                        Span::styled("playlist ", theme.dim()),
+                        Span::styled(ui::clean(name), theme.text()),
+                    ]))
+                    .column_span(span)]),
                 };
-                let style = if marks.contains(&i) {
-                    theme.marked()
+                if marks.contains(&i) {
+                    row.style(theme.marked())
                 } else {
-                    style
-                };
-                Row::new([
-                    Cell::from(label),
-                    Cell::from(Span::styled(duration, theme.dim())),
-                ])
-                .style(style)
+                    row
+                }
             },
         );
+        if entries.is_empty() && self.loaded {
+            let [_, _, rest] = Layout::vertical([
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Fill(1),
+            ])
+            .areas(area);
+            ui::draw_placeholder(frame, rest, &["This folder is empty"], theme);
+        }
     }
 
     fn handle_action(&mut self, action: Action, ctx: &mut Ctx) -> bool {
