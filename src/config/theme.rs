@@ -8,11 +8,11 @@ use serde::{Deserialize, Deserializer, de};
 #[serde(deny_unknown_fields)]
 pub struct Theme {
     #[serde(deserialize_with = "color")]
-    pub accent: Color,
-    #[serde(deserialize_with = "color")]
     pub text: Color,
     #[serde(deserialize_with = "color")]
     pub dim: Color,
+    #[serde(deserialize_with = "color")]
+    pub border: Color,
     #[serde(deserialize_with = "color")]
     pub selection_fg: Color,
     #[serde(deserialize_with = "color")]
@@ -24,9 +24,17 @@ pub struct Theme {
     #[serde(deserialize_with = "color")]
     pub directory: Color,
     #[serde(deserialize_with = "color")]
-    pub border: Color,
-    #[serde(deserialize_with = "color")]
     pub error: Color,
+    #[serde(deserialize_with = "color")]
+    pub artist: Color,
+    #[serde(deserialize_with = "color")]
+    pub track: Color,
+    #[serde(deserialize_with = "color")]
+    pub album: Color,
+    #[serde(deserialize_with = "color")]
+    pub duration: Color,
+    #[serde(deserialize_with = "color", rename = "progress")]
+    pub progress_filled: Color,
     #[serde(deserialize_with = "colors")]
     pub visualizer: Vec<Color>,
 }
@@ -40,22 +48,27 @@ impl Theme {
         Style::new().fg(self.dim)
     }
 
-    pub fn accent(&self) -> Style {
-        Style::new().fg(self.accent)
-    }
-
     pub fn border(&self) -> Style {
         Style::new().fg(self.border)
     }
 
-    /// The highlighted row of a focused list.
-    pub fn selection(&self) -> Style {
-        Style::new().fg(self.selection_fg).bg(self.selection_bg)
+    /// Titles and column headers.
+    pub fn header(&self) -> Style {
+        self.text().add_modifier(Modifier::BOLD)
     }
 
-    /// The highlighted row of a list without focus.
+    /// The selected row of the focused list.
+    pub fn selection(&self) -> Style {
+        if self.selection_fg == Color::Reset && self.selection_bg == Color::Reset {
+            Style::new().add_modifier(Modifier::REVERSED)
+        } else {
+            Style::new().fg(self.selection_fg).bg(self.selection_bg)
+        }
+    }
+
+    /// The selected row of a list without focus.
     pub fn selection_inactive(&self) -> Style {
-        Style::new().add_modifier(Modifier::REVERSED)
+        self.selection().add_modifier(Modifier::DIM)
     }
 
     pub fn playing(&self) -> Style {
@@ -67,7 +80,7 @@ impl Theme {
     }
 
     pub fn directory(&self) -> Style {
-        Style::new().fg(self.directory).add_modifier(Modifier::BOLD)
+        Style::new().fg(self.directory)
     }
 
     pub fn error(&self) -> Style {

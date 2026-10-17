@@ -16,6 +16,14 @@ A rewrite from scratch with a new architecture modelled on ncmpcpp and rmpc.
   columns and lyrics/visualizer settings. The documented default file is the
   single source of truth; partial files keep all other defaults. 0.1 config
   files are detected and rejected with instructions.
+- ncmpcpp-style interface: screen title and volume on top, column headers,
+  folders spanning the whole row, reverse-video selection and a
+  `Playing: "Title" by Artist in Album` status line under the progress bar.
+- The tag editor follows ncmpcpp (directories, tag types, tags) and can also
+  rename files and fix letter case.
+- The music directory is read from the local `mpd.conf` when MPD runs on the
+  same machine.
+- `c` clears the queue from every screen.
 - New `--config` and `--print-default-config` options; `RMPTUI_LOG` sets
   the log level.
 

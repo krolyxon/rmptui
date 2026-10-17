@@ -2,7 +2,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Rect},
     text::Span,
-    widgets::{Block, Row},
+    widgets::Row,
 };
 
 use super::{Popup, PopupState, frame_popup};
@@ -101,14 +101,13 @@ impl Popup for HelpPopup {
         self.list.render(
             frame,
             inner,
-            Block::new(),
             None,
             &[Constraint::Length(24), Constraint::Fill(1)],
             rows.len(),
             true,
             theme,
             |i| match &rows[i] {
-                HelpRow::Heading(title) => Row::new([Span::styled(title.clone(), theme.accent())]),
+                HelpRow::Heading(title) => Row::new([Span::styled(title.clone(), theme.header())]),
                 HelpRow::Binding { keys, description } => Row::new([
                     Span::styled(format!("  {keys}"), theme.text()),
                     Span::styled(*description, theme.dim()),

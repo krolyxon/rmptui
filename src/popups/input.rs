@@ -17,6 +17,7 @@ pub enum InputPurpose {
     RenamePlaylist(String),
     SaveQueue,
     TagValue(TagField),
+    FileName,
 }
 
 pub struct InputPopup {
@@ -57,6 +58,10 @@ impl InputPopup {
                 ctx.client.exec(commands::save(&value));
                 ctx.notify(format!("Saved the queue as “{value}”"));
             }
+            InputPurpose::FileName => ctx.effects.push(Effect::Message(
+                ScreenId::TagEditor,
+                ScreenMessage::FileName(value),
+            )),
             InputPurpose::TagValue(field) => ctx.effects.push(Effect::Message(
                 ScreenId::TagEditor,
                 ScreenMessage::TagValue {

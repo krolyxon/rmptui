@@ -6,7 +6,7 @@
 **A fast, keyboard-driven MPD client for your terminal.**
 
 rmptui is a terminal interface for [Music Player Daemon
-(MPD)](https://www.musicpd.org/) in the spirit of ncmpcpp and rmpc. Browse your
+(MPD)](https://www.musicpd.org/) that looks and feels like ncmpcpp. Browse your
 library, manage the queue and playlists, edit tags, read synced lyrics and
 watch a spectrum visualizer without leaving the terminal.
 
@@ -16,13 +16,18 @@ watch a spectrum visualizer without leaving the terminal.
 
 | Key | Screen | What it does |
 | --- | --- | --- |
-| `1` | **Queue** | The play queue with configurable columns. Play, remove, reorder, mark, shuffle, clear or save it as a playlist. `L` shows a synced lyrics pane next to it. |
-| `2` | **Browse** | Your music folders, ncmpcpp style. Stored playlists are listed at the bottom of the root folder. |
-| `3` | **Playlists** | Stored playlists and their songs: load, play from a song, remove or reorder songs, rename or delete playlists. |
-| `4` | **Library** | Album artists → albums (with year) → songs. `t` switches between AlbumArtist and Artist. |
-| `5` | **Tags** | Edit Title, Artist, Album Artist, Album, Track, Disc, Date, Genre and Comment of one or many songs. |
-| `6` | **Visualizer** | A spectrum analyzer fed by an MPD fifo output. |
+| `1` | **Playlist** | The play queue as a table (Artist, Track, Title, Album, Time). Play, remove, reorder, mark, shuffle or save it as a playlist. `L` shows a synced lyrics pane next to it. |
+| `2` | **Browse** | Your music folders. Folders (`[name]`) span the whole row, songs use the same columns as the queue, and stored playlists are listed at the bottom of the root folder. |
+| `3` | **Playlist editor** | Stored playlists and their songs: load, play from a song, remove or reorder songs, rename or delete playlists. |
+| `4` | **Media library** | Album artists → albums (with year) → songs. `t` switches between AlbumArtist and Artist. |
+| `5` | **Tag editor** | Directories, tag types and tags, like ncmpcpp: edit Title, Artist, Album Artist, Album, Date, Track, Genre, Composer, Performer, Disc and Comment of one or many songs, rename files, fix letter case, then save. |
+| `6` | **Music visualizer** | A spectrum analyzer fed by an MPD fifo output. |
 | `7` | **Lyrics** | Synced lyrics that follow playback, or plain lyrics you can scroll. |
+
+Every screen shares ncmpcpp's frame: the screen title and volume on top
+(active modes such as `[rz]` appear on the line below), and at the bottom a
+progress bar above `Playing: "Title" by Artist in Album (Year)` with the
+bitrate and elapsed/total time.
 
 Other highlights:
 
@@ -34,7 +39,7 @@ Other highlights:
 - **Marks.** `v` marks items; queue removal, add-to-playlist and tag edits
   then apply to every marked item.
 - **Mouse support.** Click to select, double-click to play/open, scroll with
-  the wheel, click a tab to switch screens and click the progress bar to seek.
+  the wheel and click the progress bar to seek.
 - **TCP or Unix socket**, with password support and automatic reconnection.
 
 ## Requirements
@@ -95,7 +100,7 @@ The main sections:
 host = "127.0.0.1"      # or a Unix socket path such as "~/.config/mpd/socket"
 port = 6600
 password = ""
-music_directory = ""    # needed for the tag editor and local .lrc files
+music_directory = ""    # for the tag editor and local .lrc files (see below)
 
 [playback]
 seek_seconds = 5
@@ -104,17 +109,21 @@ volume_step = 5
 [ui]
 startup_screen = "queue"
 mouse = true
+confirm_clear_queue = false
 lyrics_pane = false
-queue_columns = [
-    { field = "artist", width = 25 },
+song_columns = [        # queue, browser and playlist editor
+    { field = "artist", width = 34 },
     { field = "track", width = 5 },
-    { field = "title", width = 35 },
+    { field = "title", width = 33 },
     { field = "album", width = 30 },
-    { field = "duration", width = 7 },
+    { field = "duration", width = 5 },
 ]
 
-[theme]
-accent = "magenta"      # color names, 256-color indices or "#rrggbb"
+[theme]                 # color names, 256-color indices or "#rrggbb"
+text = "reset"
+dim = "darkgray"
+selection_fg = "reset"  # both "reset": reverse video, like ncmpcpp
+selection_bg = "reset"
 visualizer = ["blue", "cyan", "green", "yellow", "red"]
 
 [lyrics]
@@ -173,10 +182,20 @@ the lyrics of the current song again.
 
 ### Tag editor
 
-MPD cannot change tags, so the tag editor writes the files directly. That
-requires the music files to be on this machine: set `mpd.music_directory`, or
-connect through MPD's Unix socket so rmptui can ask MPD for it. After saving,
-rmptui asks MPD to rescan the edited folders.
+MPD cannot change tags, so the tag editor writes the files directly, which
+requires the music files to be on this machine. rmptui finds the music
+directory in this order: `mpd.music_directory` in its config, MPD itself (only
+answered over a Unix socket), and finally `music_directory` from the local
+MPD's `mpd.conf` (`$XDG_CONFIG_HOME/mpd/mpd.conf`, `~/.config/mpd/mpd.conf`,
+`~/.mpdconf`, `~/.mpd/mpd.conf` or `/etc/mpd.conf`) when MPD runs on this
+machine.
+
+Highlight a directory to see its songs in the `Tags` column, which shows the
+tag selected in `Tag types`. `Enter` on a tag type edits it for all marked
+songs (or all songs), `Enter` on a song edits it for that song only, and
+`Filename` renames files. Changes stay pending until you choose `Save` (or
+press `w`); `Reset` (or `u`) discards them. After saving, rmptui asks MPD to
+rescan the folder.
 
 ## Key bindings
 
@@ -201,6 +220,7 @@ Playlists screen and toggles consume elsewhere).
 | `+` `=` / `-` | Volume up / down |
 | `m` | Toggle mute |
 | `r` `z` `y` `R` | Toggle repeat, random, single, consume |
+| `c` | Clear the queue |
 | `U` | Rescan the music database |
 | `?` `F1` | Show key bindings |
 | `q` `Ctrl+c` | Quit |
@@ -225,14 +245,13 @@ Playlists screen and toggles consume elsewhere).
 | --- | --- | --- |
 | Queue | `d` `Delete` | Remove the song (or all marked songs) |
 | Queue | `J` / `K` | Move the song down / up |
-| Queue | `c` | Clear the queue (asks first) |
 | Queue | `Z` / `S` | Shuffle / save as playlist |
 | Queue | `o` | Jump to the playing song |
 | Queue | `L` | Toggle the lyrics pane |
 | Playlists | `d`, `J` / `K` | Remove / move the selected song |
 | Playlists | `R` / `D` | Rename / delete the playlist |
 | Library | `t` | Switch between AlbumArtist and Artist |
-| Tags | `Enter` | Edit the selected tag |
+| Tags | `Enter` | Edit a tag, rename a file, or run the highlighted action |
 | Tags | `w` / `u` | Write / discard pending changes |
 | Lyrics | `F5` | Fetch lyrics again |
 

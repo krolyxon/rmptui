@@ -34,7 +34,7 @@
   - Every screen sees every `MpdEvent`, so caches stay valid while hidden.
 - `popups/` holds modal components (`Popup` trait); the topmost popup gets all
   keys. Destructive actions go through `ConfirmPopup`.
-- `ui/` holds the frame chrome (header, tabs, progress, status line), the
+- `ui/` holds the ncmpcpp-style frame (title row, progress bar, status line), the
   virtualized searchable `ListView`, and the `LineInput` editor.
 - `config/`:
   - `default.toml` is embedded and is the single source of truth for

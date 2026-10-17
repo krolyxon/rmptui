@@ -3,8 +3,7 @@
 use crossterm::event::{MouseEvent, MouseEventKind};
 use ratatui::{
     Frame,
-    layout::{Alignment, Rect},
-    style::Modifier,
+    layout::{Alignment, Constraint, Layout, Rect},
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -24,20 +23,22 @@ pub struct LyricsScreen {
     file: Option<String>,
 }
 
-/// Draws the lyrics pane without manual scrolling.
-pub fn draw_lyrics(frame: &mut Frame, area: Rect, ctx: &Ctx, focused: bool) {
-    render(frame, area, ctx, focused, 0);
+/// Draws the lyrics pane next to the queue (no manual scrolling).
+pub fn draw_lyrics(frame: &mut Frame, area: Rect, ctx: &Ctx) {
+    let theme = ctx.theme();
+    let [header, line, body] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Fill(1),
+    ])
+    .areas(area);
+    frame.render_widget(Line::styled("Lyrics", theme.header()), header);
+    ui::draw_hline(frame, line, theme);
+    render(frame, body, ctx, 0);
 }
 
-fn render(frame: &mut Frame, area: Rect, ctx: &Ctx, focused: bool, scroll: usize) -> usize {
+fn render(frame: &mut Frame, inner: Rect, ctx: &Ctx, scroll: usize) -> usize {
     let theme = ctx.theme();
-    let title = match &ctx.mpd.current {
-        Some(song) => format!(" Lyrics · {} ", ui::song_label(song)),
-        None => " Lyrics ".to_owned(),
-    };
-    let block = ui::pane(title, focused, theme);
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
     let height = usize::from(inner.height);
 
     let lyrics = match (&ctx.mpd.current, &ctx.lyrics.status) {
@@ -71,9 +72,7 @@ fn render(frame: &mut Frame, area: Rect, ctx: &Ctx, focused: bool, scroll: usize
         .map(|i| {
             let text = lyrics.line(i);
             let style = match (lyrics, current) {
-                (Lyrics::Synced(_), Some(c)) if i == c => {
-                    theme.playing().add_modifier(Modifier::BOLD)
-                }
+                (Lyrics::Synced(_), Some(c)) if i == c => theme.header(),
                 (Lyrics::Synced(_), Some(c)) if i < c => theme.dim(),
                 (Lyrics::Synced(_), None) => theme.dim(),
                 _ => theme.text(),
@@ -86,6 +85,13 @@ fn render(frame: &mut Frame, area: Rect, ctx: &Ctx, focused: bool, scroll: usize
 }
 
 impl Screen for LyricsScreen {
+    fn title(&self, ctx: &Ctx) -> Line<'static> {
+        match &ctx.mpd.current {
+            Some(song) => Line::from(format!("Lyrics: {}", ui::song_label(song))),
+            None => Line::from("Lyrics"),
+        }
+    }
+
     fn draw(&mut self, frame: &mut Frame, area: Rect, ctx: &Ctx) {
         // Plain lyrics start from the top for every song.
         let file = ctx.mpd.current.as_ref().map(|s| s.file.clone());
@@ -93,7 +99,7 @@ impl Screen for LyricsScreen {
             self.file = file;
             self.scroll = 0;
         }
-        self.height = render(frame, area, ctx, true, self.scroll);
+        self.height = render(frame, area, ctx, self.scroll);
     }
 
     fn handle_action(&mut self, action: Action, ctx: &mut Ctx) -> bool {

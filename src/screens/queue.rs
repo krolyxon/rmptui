@@ -5,23 +5,21 @@ use std::{collections::HashSet, time::Duration};
 use crossterm::event::MouseEvent;
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Rect},
-    style::Modifier,
-    text::{Line, Span},
-    widgets::{Cell, Row},
+    layout::{Constraint, Rect},
+    text::Line,
 };
 
 use super::{Ctx, Screen, draw_lyrics};
 use crate::{
     action::Action,
-    config::{ColumnField, Config},
+    config::Config,
     mpd::{MpdEvent, Reply, Selection, commands},
-    popups::{AddToPlaylistPopup, ConfirmPopup, InputPopup, InputPurpose},
+    popups::{AddToPlaylistPopup, InputPopup, InputPurpose},
     ui::{
         self,
-        list::{Click, ListView},
+        list::{Click, Header, ListView},
     },
-    util::format_duration,
+    util::{format_length, plural},
 };
 
 pub struct QueueScreen {
@@ -98,93 +96,55 @@ impl QueueScreen {
 }
 
 impl Screen for QueueScreen {
+    fn title(&self, ctx: &Ctx) -> Line<'static> {
+        let queue = &ctx.mpd.queue;
+        let total: Duration = queue.iter().filter_map(|s| s.duration).sum();
+        Line::from(format!(
+            "Playlist ({}, length: {})",
+            plural(queue.len(), "item"),
+            format_length(total)
+        ))
+    }
+
     fn draw(&mut self, frame: &mut Frame, area: Rect, ctx: &Ctx) {
+        let theme = ctx.theme();
         let area = if self.lyrics_pane {
             let width = ctx.config.ui.lyrics_pane_width;
-            let [queue, lyrics] = Layout::horizontal([
-                Constraint::Percentage(100 - width),
-                Constraint::Percentage(width),
-            ])
-            .areas(area);
-            draw_lyrics(frame, lyrics, ctx, false);
+            let [queue, lyrics] = <[Rect; 2]>::try_from(ui::split_columns(
+                frame,
+                area,
+                &[
+                    Constraint::Percentage(100 - width),
+                    Constraint::Percentage(width),
+                ],
+                theme,
+            ))
+            .expect("two columns");
+            draw_lyrics(frame, lyrics, ctx);
             queue
         } else {
             area
         };
 
-        let theme = ctx.theme();
         let queue = &ctx.mpd.queue;
-        let columns = &ctx.config.ui.queue_columns;
-        let total: Duration = queue.iter().filter_map(|s| s.duration).sum();
-        let title = Line::from(vec![
-            Span::raw(" Queue "),
-            Span::styled(
-                format!("{} songs · {} ", queue.len(), format_duration(total)),
-                theme.dim(),
-            ),
-        ]);
-        let mut widths = vec![Constraint::Length(1)];
-        widths.extend(columns.iter().map(|c| match c.field {
-            ColumnField::Duration => Constraint::Length(c.width.max(5)),
-            ColumnField::Track | ColumnField::Disc => Constraint::Length(c.width.max(2)),
-            _ => Constraint::Fill(c.width),
-        }));
-        let header = Row::new(
-            std::iter::once(Cell::from(""))
-                .chain(columns.iter().map(|c| Cell::from(c.field.title()))),
-        )
-        .style(theme.dim().add_modifier(Modifier::BOLD));
-
-        if queue.is_empty() {
-            let block = ui::pane(title, true, theme);
-            let inner = block.inner(area);
-            frame.render_widget(block, area);
-            ui::draw_placeholder(
-                frame,
-                inner,
-                &[
-                    "The queue is empty.",
-                    "",
-                    "Add songs from the Browser (2) or the Library (4).",
-                ],
-                theme,
-            );
-            return;
-        }
-
+        let columns = &ctx.config.ui.song_columns;
         let marks = &self.marks;
         self.list.render(
             frame,
             area,
-            ui::pane(title, true, theme),
-            Some(header),
-            &widths,
+            Some(Header::Columns(ui::song_header(columns))),
+            &ui::song_widths(columns),
             queue.len(),
             true,
             theme,
             |i| {
                 let song = &queue[i];
-                let marked = song.id.is_some_and(|id| marks.contains(&id));
-                let (marker, style) = if ctx.mpd.is_current(song) {
-                    ("▶", theme.playing())
-                } else if marked {
-                    ("●", theme.marked())
+                let row = ui::song_row(song, columns, ctx.mpd.is_current(song), theme);
+                if song.id.is_some_and(|id| marks.contains(&id)) {
+                    row.style(theme.marked())
                 } else {
-                    (" ", theme.text())
-                };
-                let style = if marked {
-                    style.patch(theme.marked())
-                } else {
-                    style
-                };
-                Row::new(
-                    std::iter::once(Cell::from(Span::styled(marker, style))).chain(
-                        columns
-                            .iter()
-                            .map(|c| Cell::from(ui::song_field(song, c.field))),
-                    ),
-                )
-                .style(style)
+                    row
+                }
             },
         );
     }
@@ -211,12 +171,6 @@ impl Screen for QueueScreen {
             }
             Action::MoveItemUp => self.move_selected(false, ctx),
             Action::MoveItemDown => self.move_selected(true, ctx),
-            Action::ClearQueue if len > 0 => {
-                ctx.popup(ConfirmPopup::new(
-                    format!("Remove all {len} songs from the queue?"),
-                    vec![commands::clear()],
-                ));
-            }
             Action::ShuffleQueue => ctx.client.exec(commands::shuffle()),
             Action::SaveQueue if len > 0 => {
                 ctx.popup(InputPopup::new(

@@ -29,39 +29,52 @@ volume_step = 5
 # Screen shown on startup: queue, browser, playlists, library, tag_editor,
 # visualizer or lyrics.
 startup_screen = "queue"
-# Enable mouse support (click to select, wheel to scroll, click the progress
-# bar to seek, click a tab to switch).
+# Enable mouse support (click to select, double-click to play/open, wheel to
+# scroll, click the progress bar to seek).
 mouse = true
+# Ask before clearing the queue.
+confirm_clear_queue = false
 # Show the lyrics pane next to the queue on startup (toggle with `L`).
 lyrics_pane = false
 # Width of the lyrics pane in percent of the screen.
 lyrics_pane_width = 40
 # Seconds a status message stays visible.
 message_timeout = 4
-# Queue columns. `field` is one of artist, album_artist, title, album, track,
-# disc, date, genre, duration or file; `width` is a relative weight.
-queue_columns = [
-    { field = "artist", width = 25 },
+# Columns of the song tables (queue, browser, playlist contents). `field` is
+# one of artist, album_artist, title, album, track, disc, date, genre,
+# duration or file. `width` is a relative weight, except for track, disc and
+# duration, where it is a fixed number of characters.
+song_columns = [
+    { field = "artist", width = 34 },
     { field = "track", width = 5 },
-    { field = "title", width = 35 },
+    { field = "title", width = 33 },
     { field = "album", width = 30 },
-    { field = "duration", width = 7 },
+    { field = "duration", width = 5 },
 ]
 
 [theme]
 # Colors are names (black, red, green, yellow, blue, magenta, cyan, gray,
 # darkgray, lightred, …, white, reset), 256-color indices ("208") or hex
-# values ("#c694ff").
-accent = "magenta"
+# values ("#c694ff"). "reset" is your terminal's default color.
 text = "reset"
 dim = "darkgray"
-selection_fg = "black"
-selection_bg = "magenta"
-playing = "green"
+# Horizontal and vertical separator lines.
+border = "gray"
+# The selected row. With both set to "reset", the row is shown in reverse
+# video like ncmpcpp.
+selection_fg = "reset"
+selection_bg = "reset"
+playing = "reset"
 marked = "yellow"
-directory = "blue"
-border = "darkgray"
+directory = "reset"
 error = "red"
+# Song table columns.
+artist = "reset"
+track = "darkgray"
+album = "reset"
+duration = "reset"
+# The filled part of the progress bar.
+progress = "gray"
 # Visualizer bar gradient, from the bottom of the screen to the top.
 visualizer = ["blue", "cyan", "green", "yellow", "red"]
 
@@ -123,6 +136,7 @@ toggle_random = ["z"]
 toggle_single = ["y"]
 toggle_consume = ["R"]
 update_database = ["U"]
+clear_queue = ["c"]
 next_screen = ["Tab"]
 previous_screen = ["Shift+Tab"]
 screen_queue = ["1"]
@@ -157,7 +171,6 @@ add_to_playlist = ["a"]
 delete = ["d", "Delete"]
 move_item_up = ["K"]
 move_item_down = ["J"]
-clear_queue = ["c"]
 shuffle_queue = ["Z"]
 save_queue = ["S"]
 jump_to_current = ["o"]

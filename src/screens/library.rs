@@ -3,9 +3,9 @@
 use crossterm::event::MouseEvent;
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Position, Rect},
-    style::Modifier,
-    text::Span,
+    layout::{Constraint, Position, Rect},
+    style::{Modifier, Style},
+    text::{Line, Span},
     widgets::{Cell, Row},
 };
 
@@ -19,7 +19,7 @@ use crate::{
     popups::AddToPlaylistPopup,
     ui::{
         self,
-        list::{Click, ListView},
+        list::{Click, Header, ListView},
     },
     util::format_duration,
 };
@@ -172,112 +172,95 @@ fn unknown(value: &str) -> &str {
 }
 
 impl Screen for LibraryScreen {
+    fn title(&self, _ctx: &Ctx) -> Line<'static> {
+        Line::from("Media library")
+    }
+
     fn draw(&mut self, frame: &mut Frame, area: Rect, ctx: &Ctx) {
         let theme = ctx.theme();
-        let [artists_area, albums_area, songs_area] = Layout::horizontal([
-            Constraint::Percentage(28),
-            Constraint::Percentage(32),
-            Constraint::Percentage(40),
-        ])
-        .areas(area);
+        let [artists_area, albums_area, songs_area] = <[Rect; 3]>::try_from(ui::split_columns(
+            frame,
+            area,
+            &[
+                Constraint::Percentage(28),
+                Constraint::Percentage(32),
+                Constraint::Percentage(40),
+            ],
+            theme,
+        ))
+        .expect("three columns");
 
         let artists = &self.artists;
         let title = if self.use_artist {
-            " Artists "
+            "Artists"
         } else {
-            " Album Artists "
+            "Album artists"
         };
-        let block = ui::pane(title, self.focus == Column::Artists, theme);
-        if artists.is_empty() {
-            let inner = block.inner(artists_area);
-            frame.render_widget(block, artists_area);
-            let text = if self.artists_loaded {
-                "No artists"
-            } else {
-                "Loading…"
-            };
-            ui::draw_placeholder(frame, inner, &[text], theme);
-        } else {
-            self.artist_list.render(
-                frame,
-                artists_area,
-                block,
-                None,
-                &[Constraint::Fill(1)],
-                artists.len(),
-                self.focus == Column::Artists,
-                theme,
-                |i| Row::new([Cell::from(unknown(&artists[i]).to_owned())]),
-            );
-        }
+        self.artist_list.render(
+            frame,
+            artists_area,
+            Some(Header::Title(Line::from(title))),
+            &[Constraint::Fill(1)],
+            artists.len(),
+            self.focus == Column::Artists,
+            theme,
+            |i| Row::new([Cell::from(ui::clean(unknown(&artists[i])))]),
+        );
 
         let albums = &self.albums;
-        let block = ui::pane(" Albums ", self.focus == Column::Albums, theme);
-        if albums.is_empty() {
-            frame.render_widget(block, albums_area);
-        } else {
-            self.album_list.render(
-                frame,
-                albums_area,
-                block,
-                None,
-                &[Constraint::Length(6), Constraint::Fill(1)],
-                albums.len(),
-                self.focus == Column::Albums,
-                theme,
-                |i| {
-                    let album = &albums[i];
-                    Row::new([
-                        Cell::from(Span::styled(
-                            album.date.chars().take(4).collect::<String>(),
-                            theme.dim(),
-                        )),
-                        Cell::from(unknown(&album.name).to_owned()),
-                    ])
-                },
-            );
-        }
+        self.album_list.render(
+            frame,
+            albums_area,
+            Some(Header::Title(Line::from("Albums"))),
+            &[Constraint::Fill(1)],
+            albums.len(),
+            self.focus == Column::Albums,
+            theme,
+            |i| {
+                let album = &albums[i];
+                let date: String = album.date.chars().take(4).collect();
+                let mut spans = Vec::new();
+                if !date.is_empty() {
+                    spans.push(Span::styled(format!("({date}) "), theme.dim()));
+                }
+                spans.push(Span::raw(ui::clean(unknown(&album.name))));
+                Row::new([Cell::from(Line::from(spans))])
+            },
+        );
 
         let songs = &self.songs;
-        let block = ui::pane(" Songs ", self.focus == Column::Songs, theme);
-        if songs.is_empty() {
-            frame.render_widget(block, songs_area);
-        } else {
-            self.song_list.render(
-                frame,
-                songs_area,
-                block,
-                None,
-                &[
-                    Constraint::Length(3),
-                    Constraint::Fill(1),
-                    Constraint::Length(7),
-                ],
-                songs.len(),
-                self.focus == Column::Songs,
-                theme,
-                |i| {
-                    let song = &songs[i];
-                    let style = if ctx.mpd.is_queued(&song.file) {
-                        theme.text().add_modifier(Modifier::BOLD)
-                    } else {
-                        theme.text()
-                    };
-                    Row::new([
-                        Cell::from(Span::styled(
-                            song.track().unwrap_or_default().to_owned(),
-                            theme.dim(),
-                        )),
-                        Cell::from(song.display_title().to_owned()),
-                        Cell::from(Span::styled(
-                            song.duration.map(format_duration).unwrap_or_default(),
-                            theme.dim(),
-                        )),
-                    ])
-                    .style(style)
-                },
-            );
-        }
+        self.song_list.render(
+            frame,
+            songs_area,
+            Some(Header::Title(Line::from("Songs"))),
+            &[
+                Constraint::Length(2),
+                Constraint::Fill(1),
+                Constraint::Length(5),
+            ],
+            songs.len(),
+            self.focus == Column::Songs,
+            theme,
+            |i| {
+                let song = &songs[i];
+                let row = Row::new([
+                    Cell::from(Span::styled(
+                        song.track().map(|t| format!("{t:0>2}")).unwrap_or_default(),
+                        Style::new().fg(theme.track),
+                    )),
+                    Cell::from(ui::clean(song.display_title())),
+                    Cell::from(
+                        Line::from(song.duration.map(format_duration).unwrap_or_default())
+                            .right_aligned(),
+                    ),
+                ]);
+                if ctx.mpd.is_queued(&song.file) {
+                    row.style(Style::new().add_modifier(Modifier::BOLD))
+                } else {
+                    row
+                }
+            },
+        );
     }
 
     fn handle_action(&mut self, action: Action, ctx: &mut Ctx) -> bool {
