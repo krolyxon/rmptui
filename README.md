@@ -11,6 +11,10 @@ library, manage the queue and playlists, edit tags, read synced lyrics and
 watch a music visualizer without leaving the terminal.
 
 ![rmptui screenshot](https://raw.githubusercontent.com/krolyxon/rmptui/master/assets/ss.png)
+![Browse Screen](assets/browse-screen.png)
+![Playlist Editor Screen](assets/playlist-editor-screen.png)
+![Lyrics Screen](assets/lyrics-screen.png)
+
 
 ## Screens
 
