@@ -1,20 +1,19 @@
+//! File logging. The terminal belongs to the UI, so diagnostics go to a file.
+
 use std::{
-    fs::{self, OpenOptions},
-    io::{self, Write},
-    path::{Path, PathBuf},
-    sync::{Mutex, OnceLock},
-    time::{SystemTime, UNIX_EPOCH},
+    fs::OpenOptions,
+    io,
+    path::Path,
+    sync::{Arc, Mutex},
 };
 
-use crate::AppResult;
+use tracing_subscriber::{EnvFilter, fmt};
 
-static LOG_FILE: OnceLock<Mutex<fs::File>> = OnceLock::new();
+pub const LOG_PATH: &str = "/tmp/rmptui.log";
 
-pub fn init(path: &Path) -> AppResult<PathBuf> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
+/// Appends logs to `path`. The level can be set with `RMPTUI_LOG`
+/// (e.g. `RMPTUI_LOG=debug`); the default is `info`.
+pub fn init(path: &Path) -> io::Result<()> {
     let mut options = OpenOptions::new();
     options.create(true).append(true);
     #[cfg(unix)]
@@ -22,65 +21,38 @@ pub fn init(path: &Path) -> AppResult<PathBuf> {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600);
     }
-    let file = options.open(path)?;
-    let _ = LOG_FILE.set(Mutex::new(file));
+    let file = Arc::new(Mutex::new(options.open(path)?));
+    let filter = EnvFilter::try_from_env("RMPTUI_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
+    fmt()
+        .with_env_filter(filter)
+        .with_ansi(false)
+        .with_writer(move || MutexWriter(Arc::clone(&file)))
+        .try_init()
+        .map_err(io::Error::other)?;
 
-    let panic_hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |panic| {
-        let message = panic
-            .payload()
-            .downcast_ref::<&str>()
-            .copied()
-            .or_else(|| panic.payload().downcast_ref::<String>().map(String::as_str))
-            .unwrap_or("non-string panic payload");
-        let location = panic
-            .location()
-            .map(|location| {
-                format!(
-                    " at {}:{}:{}",
-                    location.file(),
-                    location.line(),
-                    location.column()
-                )
-            })
-            .unwrap_or_default();
-        error(&format!("panic: {message}{location}"));
-        panic_hook(panic);
+    // Record panics in the log as well as on the (restored) terminal.
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        tracing::error!("panic: {info}");
+        previous(info);
     }));
-
-    info(&format!("logging initialized: {}", path.display()));
-    Ok(path.to_path_buf())
+    Ok(())
 }
 
-pub fn info(message: &str) {
-    write("INFO", message);
-}
+struct MutexWriter(Arc<Mutex<std::fs::File>>);
 
-pub fn error(message: &str) {
-    write("ERROR", message);
-}
-
-fn write(level: &str, message: &str) {
-    let Some(file) = LOG_FILE.get() else {
-        return;
-    };
-
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
-    let line = format!(
-        "[{}.{:03}] {level} {message}",
-        timestamp.as_secs(),
-        timestamp.subsec_millis()
-    );
-    let mut file = file
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    if let Err(error) = writeln!(file, "{line}") {
-        report_write_error(error);
+impl io::Write for MutexWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .write(buf)
     }
-}
 
-fn report_write_error(error: io::Error) {
-    eprintln!("failed to write rmptui log: {error}");
+    fn flush(&mut self) -> io::Result<()> {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .flush()
+    }
 }
