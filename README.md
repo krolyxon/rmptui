@@ -11,9 +11,15 @@ library, manage the queue and playlists, edit tags, read synced lyrics and
 watch a music visualizer without leaving the terminal.
 
 ![Browse Screen](assets/browse-screen.png)
-![Playlist Editor Screen](assets/playlist-editor-screen.png)
-![Lyrics Screen](assets/lyrics-screen.png)
 
+<table>
+  <tr>
+    <td width="50%"><img src="assets/playlist-editor-screen.png" alt="system tab"><br>
+      <sub><b>Playlist Editor</b> · Manage your playlists</sub></td>
+    <td width="50%"><img src="assets/lyrics-screen.png" alt="system tab"><br>
+      <sub><b>Lyrics Screen</b> · Fetched lyrics with synchronization</sub></td>
+  </tr>
+</table>
 
 ## Screens
 
