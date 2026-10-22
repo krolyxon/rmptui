@@ -58,7 +58,15 @@ Other highlights:
 
 ## Install
 
-From a local checkout, run the installer to build the release executable and
+Prebuilt binaries for Linux (x86_64 and aarch64, glibc and static musl) and
+macOS are attached to each [release](https://github.com/krolyxon/rmptui/releases).
+To download and install the right one for your machine:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/krolyxon/rmptui/releases/latest/download/rmptui-installer.sh | sh
+```
+
+To build and install from a local checkout instead, run the installer to build the release executable and
 copy it to `/usr/local/bin/rmptui`:
 
 ```sh

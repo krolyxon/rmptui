@@ -1,4 +1,4 @@
-## rmptui-v0.2.0
+## v0.2.0
 
 A rewrite from scratch with a new architecture modelled on ncmpcpp and rmpc.
 
@@ -28,7 +28,7 @@ A rewrite from scratch with a new architecture modelled on ncmpcpp and rmpc.
 - New `--config` and `--print-default-config` options; `RMPTUI_LOG` sets
   the log level.
 
-## rmptui-v0.1.7
+## v0.1.7
 
 - Replace the outdated MPD crate with an asynchronous native MPD TCP protocol
   client and `idle`-based server updates.
@@ -48,7 +48,7 @@ A rewrite from scratch with a new architecture modelled on ncmpcpp and rmpc.
 - Add and update tests for MPD protocol commands, configuration, search,
   browser rendering, and address formatting.
 
-## rmptui-v0.1.6
+## v0.1.6
     - Add songs to new playlist feature
     - Code refactoring
     - fix #9
