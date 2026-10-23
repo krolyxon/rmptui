@@ -43,8 +43,8 @@ Other highlights:
 - **Instant controls.** All MPD traffic runs in background tasks over MPD's
   `idle` notifications, so seeking, volume changes and skipping never wait for
   the UI, and the UI never waits for the server.
-- **Fuzzy search everywhere.** `/` searches the focused list; `n`/`N` cycle
-  through the matches.
+- **Search everywhere.** `/` searches the focused list with a
+  case-insensitive regex, like ncmpcpp; `n`/`N` cycle through the matches.
 - **Marks.** `v` marks items; queue removal, add-to-playlist and tag edits
   then apply to every marked item.
 - **Mouse support.** Click to select, double-click to play/open, scroll with

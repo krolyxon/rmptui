@@ -3,10 +3,6 @@
 use std::time::{Duration, Instant};
 
 use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
-use nucleo_matcher::{
-    Config as MatcherConfig, Matcher, Utf32Str,
-    pattern::{CaseMatching, Normalization, Pattern},
-};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Position, Rect},
@@ -14,6 +10,8 @@ use ratatui::{
     text::Line,
     widgets::{Row, Table, TableState},
 };
+
+use regex::{Regex, RegexBuilder};
 
 use crate::{action::Action, config::Theme, ui};
 
@@ -217,8 +215,11 @@ pub enum Header<'a> {
     Columns(Row<'a>),
 }
 
-/// Fuzzy search results over a list, kept in list order so that `n`/`N`
-/// walk through them like in a pager.
+/// Search results over a list, kept in list order so that `n`/`N` walk
+/// through them like in a pager.
+///
+/// Like ncmpcpp, the query is a case-insensitive regular expression that
+/// may match anywhere in an item.
 #[derive(Debug, Default)]
 pub struct Search {
     query: String,
@@ -232,15 +233,12 @@ impl Search {
         if query.trim().is_empty() {
             return;
         }
-        let pattern = Pattern::parse(query, CaseMatching::Smart, Normalization::Smart);
-        let mut matcher = Matcher::new(MatcherConfig::DEFAULT);
-        let mut buf = Vec::new();
-        self.matches
-            .extend(items.enumerate().filter_map(|(index, item)| {
-                pattern
-                    .score(Utf32Str::new(item, &mut buf), &mut matcher)
-                    .map(|_| index)
-            }));
+        let regex = compile(query);
+        self.matches.extend(
+            items
+                .enumerate()
+                .filter_map(|(index, item)| regex.is_match(item).then_some(index)),
+        );
     }
 
     pub fn clear(&mut self) {
@@ -284,6 +282,16 @@ impl Search {
     }
 }
 
+/// Builds a case-insensitive regex from a query. Since the search runs as
+/// you type, an invalid (often half-typed) pattern such as `(` is matched
+/// literally instead.
+fn compile(query: &str) -> Regex {
+    let build = |pattern: &str| RegexBuilder::new(pattern).case_insensitive(true).build();
+    build(query)
+        .or_else(|_| build(&regex::escape(query)))
+        .expect("escaped pattern is valid")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -297,11 +305,28 @@ mod tests {
     }
 
     #[test]
-    fn finds_fuzzy_matches_in_list_order() {
+    fn finds_case_insensitive_matches_in_list_order() {
         let s = search("alp");
         assert_eq!(s.matches, [0, 3]);
         assert!(s.is_match(3) && !s.is_match(1));
         assert_eq!(search("").match_count(), 0);
+        // Substring, not fuzzy: the letters must be adjacent.
+        assert_eq!(search("apa").match_count(), 0);
+        assert_eq!(search("ET").matches, [1, 3]);
+    }
+
+    #[test]
+    fn supports_regex_and_falls_back_to_literal() {
+        assert_eq!(search("^a").matches, [0, 3]);
+        assert_eq!(search("ta$").matches, [1, 4]);
+        assert_eq!(search("gam|del").matches, [2, 4]);
+        // Invalid regex: matched literally, so nothing here.
+        assert_eq!(search("(").match_count(), 0);
+        let mut s = Search::default();
+        s.update("(live)", ["Song (Live)", "Live"].into_iter());
+        assert_eq!(s.matches, [0, 1]);
+        s.update("(live", ["Song (Live)", "Live"].into_iter());
+        assert_eq!(s.matches, [0]);
     }
 
     #[test]
