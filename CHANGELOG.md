@@ -1,3 +1,9 @@
+## Unreleased
+
+- `/` search now works like ncmpcpp's: a case-insensitive regular
+  expression matched anywhere in the item, instead of fuzzy matching.
+  Invalid (half-typed) patterns are matched literally.
+
 ## v0.2.0
 
 A rewrite from scratch with a new architecture modelled on ncmpcpp and rmpc.
