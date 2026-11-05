@@ -221,64 +221,13 @@ rescan the folder.
 
 ## Key bindings
 
-These are the defaults; every binding is configurable in the `[keys.*]` tables
+Every binding is configurable in the `[keys.*]` tables
 of the config. `?` shows the active bindings inside rmptui.
 
 Bindings are grouped by context. A key is looked up in the focused popup or
 screen first, then in `navigation`, then in `global`, so screen bindings
 shadow global ones on that screen (for example `R` renames a playlist on the
 Playlists screen and toggles consume elsewhere).
-
-### Global
-
-| Key | Action |
-| --- | --- |
-| `1`–`7` | Switch screen |
-| `Tab` / `Shift+Tab` | Next / previous screen |
-| `p` | Toggle play/pause |
-| `s` / `x` | Pause / stop |
-| `>` / `<` | Next / previous track |
-| `f` / `b` | Seek forward / backward |
-| `+` `=` / `-` | Volume up / down |
-| `m` | Toggle mute |
-| `r` `z` `y` `R` | Toggle repeat, random, single, consume |
-| `c` | Clear the queue |
-| `U` | Rescan the music database |
-| `?` `F1` | Show key bindings |
-| `q` `Ctrl+c` | Quit |
-
-### Lists
-
-| Key | Action |
-| --- | --- |
-| `j` `k` / arrows | Move down / up |
-| `g` `G` / `Home` `End` | Top / bottom |
-| `Ctrl+d` `Ctrl+u`, `PageDown` `PageUp` | Half page / page |
-| `h` `l` / arrows | Back or previous column / open or next column |
-| `Enter` | Play or open the selected item |
-| `Space` | Add to the queue (toggles songs in the browser) |
-| `a` | Add to the queue, a new playlist or an existing one |
-| `v` / `V` | Mark item / clear marks |
-| `/`, `n` / `N` | Search, next / previous match |
-
-### Screens
-
-| Screen | Key | Action |
-| --- | --- | --- |
-| Queue | `d` `Delete` | Remove the song (or all marked songs) |
-| Queue | `J` / `K` | Move the song down / up |
-| Queue | `Z` / `S` | Shuffle / save as playlist |
-| Queue | `o` | Jump to the playing song |
-| Queue | `L` | Toggle the lyrics pane |
-| Playlists | `d`, `J` / `K` | Remove / move the selected song |
-| Playlists | `R` / `D` | Rename / delete the playlist |
-| Library | `t` | Switch between AlbumArtist and Artist |
-| Tags | `Enter` | Edit a tag, rename a file, or run the highlighted action |
-| Tags | `w` / `u` | Write / discard pending changes |
-| Lyrics | `F5` | Fetch lyrics again |
-
-In text fields, `Enter` submits, `Esc` cancels, `Ctrl+w` deletes a word and
-`Ctrl+a` / `Ctrl+e` jump to the start / end.
 
 ## License
 
